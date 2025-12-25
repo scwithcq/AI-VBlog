@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vblog.mapper.CommentMapper">
+
+    <!-- 通用查询结果映射 -->
+    <resultMap id="BaseResultMap" type="com.vblog.entity.Comment">
+        <id column="comment_id" property="commentId" />
+        <result column="post_id" property="postId" />
+        <result column="user_id" property="userId" />
+        <result column="parent_id" property="parentId" />
+        <result column="content" property="content" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        comment_id, post_id, user_id, parent_id, content, create_time, update_time
+    </sql>
+
+    <!-- 查询单条 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_comment
+        where comment_id = #{commentId}
+    </select>
+
+    <!-- 查询所有 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_comment
+    </select>
+
+    <!-- 根据条件查询 -->
+    <select id="selectByMap" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_comment
+        <where>
+            <if test="map != null and map.size() > 0">
+                <foreach collection="map" item="value" index="key" separator="and">
+                    ${key} = #{value}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <!-- 新增 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="commentId">
+        insert into tb_comment(post_id, user_id, parent_id, content)
+        values(#{postId}, #{userId}, #{parentId}, #{content})
+    </insert>
+
+    <!-- 修改 -->
+    <update id="update">
+        update tb_comment
+        <set>
+            <if test="postId != null">post_id = #{postId},</if>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="parentId != null">parent_id = #{parentId},</if>
+            <if test="content != null">content = #{content},</if>
+            update_time = now()
+        </set>
+        where comment_id = #{commentId}
+    </update>
+
+    <!-- 删除 -->
+    <delete id="deleteById">
+        delete from tb_comment
+        where comment_id = #{commentId}
+    </delete>
+
+</mapper>

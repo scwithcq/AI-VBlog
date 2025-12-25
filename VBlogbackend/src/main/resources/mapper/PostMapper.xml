@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vblog.mapper.PostMapper">
+
+    <!-- 通用查询结果映射 -->
+    <resultMap id="BaseResultMap" type="com.vblog.entity.Post">
+        <id column="post_id" property="postId" />
+        <result column="user_id" property="userId" />
+        <result column="content" property="content" />
+        <result column="images" property="images" />
+        <result column="video_url" property="videoUrl" />
+        <result column="source_id" property="sourceId" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        post_id, user_id, content, images, video_url, source_id, create_time, update_time
+    </sql>
+
+    <!-- 查询单条 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_post
+        where post_id = #{postId}
+    </select>
+
+    <!-- 查询所有 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_post
+        order by create_time desc
+    </select>
+
+    <!-- 根据条件查询 -->
+    <select id="selectByMap" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_post
+        <where>
+            <if test="map != null and map.size() > 0">
+                <foreach collection="map" item="value" index="key" separator="and">
+                    ${key} = #{value}
+                </foreach>
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <!-- 根据用户ID查询 -->
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_post
+        where user_id = #{userId}
+        order by create_time desc
+    </select>
+
+    <!-- 新增 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="postId">
+        insert into tb_post(user_id, content, images, video_url, source_id)
+        values(#{userId}, #{content}, #{images}, #{videoUrl}, #{sourceId})
+    </insert>
+
+    <!-- 修改 -->
+    <update id="update">
+        update tb_post
+        <set>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="images != null">images = #{images},</if>
+            <if test="videoUrl != null">video_url = #{videoUrl},</if>
+            <if test="sourceId != null">source_id = #{sourceId},</if>
+            update_time = now()
+        </set>
+        where post_id = #{postId}
+    </update>
+
+    <!-- 删除 -->
+    <delete id="deleteById">
+        delete from tb_post
+        where post_id = #{postId}
+    </delete>
+
+    <!-- 根据用户ID删除 -->
+    <delete id="deleteByUserId">
+        delete from tb_post
+        where user_id = #{userId}
+    </delete>
+
+    <!-- 根据话题名称查询帖子 -->
+    <select id="selectByTopicName" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_post
+        where content LIKE CONCAT('%#', #{topicName}, '#%')
+        order by create_time desc
+    </select>
+
+</mapper>

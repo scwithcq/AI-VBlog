@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vblog.mapper.FriendRequestMapper">
+
+    <resultMap id="BaseResultMap" type="com.vblog.entity.FriendRequest">
+        <id column="request_id" property="requestId"/>
+        <result column="from_user_id" property="fromUserId"/>
+        <result column="to_user_id" property="toUserId"/>
+        <result column="message" property="message"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 查询用户收到的好友申请 -->
+    <select id="selectReceivedRequests" resultMap="BaseResultMap">
+        SELECT *
+        FROM tb_friend_request
+        WHERE to_user_id = #{userId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 查询用户发送的好友申请 -->
+    <select id="selectSentRequests" resultMap="BaseResultMap">
+        SELECT *
+        FROM tb_friend_request
+        WHERE from_user_id = #{userId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 检查是否存在待处理的申请 -->
+    <select id="checkPendingRequest" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM tb_friend_request
+        WHERE ((from_user_id = #{fromUserId} AND to_user_id = #{toUserId})
+            OR (from_user_id = #{toUserId} AND to_user_id = #{fromUserId}))
+          AND status = 0
+    </select>
+
+</mapper>

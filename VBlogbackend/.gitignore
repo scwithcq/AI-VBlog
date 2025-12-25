@@ -1,0 +1,60 @@
+# Docs
+HELP.md
+*.md
+
+# Build outputs
+target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+*.jar
+*.war
+*.ear
+
+# IDE & Editor
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Logs
+logs/
+*.log
+hs_err_pid*.log
+
+# Env & secrets
+.env
+.env.*
+application-local.yml
+application-*.local.yml
+token.txt
+postid.txt
+commentid.txt
+
+# Runtime uploads (do not version user-generated content)
+uploads/
+src/main/resources/vblog_upload/
+target/vblog_upload/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Maven wrapper (keep the jar)
+!.mvn/wrapper/maven-wrapper.jar

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vblog.mapper.MessageMapper">
+
+    <resultMap id="BaseResultMap" type="com.vblog.entity.Message">
+        <id column="message_id" property="messageId"/>
+        <result column="conversation_id" property="conversationId"/>
+        <result column="from_user_id" property="fromUserId"/>
+        <result column="to_user_id" property="toUserId"/>
+        <result column="content" property="content"/>
+        <result column="message_type" property="messageType"/>
+        <result column="status" property="status"/>
+        <result column="is_deleted_by_sender" property="isDeletedBySender"/>
+        <result column="is_deleted_by_receiver" property="isDeletedByReceiver"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 分页查询会话消息 -->
+    <select id="selectConversationMessages" resultMap="BaseResultMap">
+        SELECT *
+        FROM tb_message
+        WHERE conversation_id = #{conversationId}
+          AND status != 2
+          AND (
+              (from_user_id = #{userId} AND is_deleted_by_sender = 0)
+              OR (to_user_id = #{userId} AND is_deleted_by_receiver = 0)
+          )
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 批量标记会话消息为已读 -->
+    <update id="batchUpdateMessageStatus">
+        UPDATE tb_message
+        SET status = #{status}, update_time = NOW()
+        WHERE conversation_id = #{conversationId}
+          AND to_user_id = #{userId}
+          AND status = 0
+    </update>
+
+    <!-- 获取用户总未读消息数 -->
+    <select id="selectUnreadCount" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM tb_message
+        WHERE to_user_id = #{userId}
+          AND status = 0
+          AND is_deleted_by_receiver = 0
+    </select>
+
+    <!-- 获取会话未读消息数 -->
+    <select id="selectConversationUnreadCount" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM tb_message
+        WHERE conversation_id = #{conversationId}
+          AND to_user_id = #{userId}
+          AND status = 0
+          AND is_deleted_by_receiver = 0
+    </select>
+
+</mapper>

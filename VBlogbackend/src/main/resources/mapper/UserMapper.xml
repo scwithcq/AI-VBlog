@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vblog.mapper.UserMapper">
+
+    <!-- 通用查询结果映射 -->
+    <resultMap id="BaseResultMap" type="com.vblog.entity.User">
+        <id column="user_id" property="userId" />
+        <result column="username" property="username" />
+        <result column="password" property="password" />
+        <result column="avatar" property="avatar" />
+        <result column="bio" property="bio" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        user_id, username, password, avatar, bio, create_time, update_time
+    </sql>
+
+    <!-- 查询单条 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_user
+        where user_id = #{userId}
+    </select>
+
+    <!-- 查询所有 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_user
+    </select>
+
+    <!-- 根据条件查询 -->
+    <select id="selectByMap" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_user
+        <where>
+            <if test="map != null and map.size() > 0">
+                <foreach collection="map" item="value" index="key" separator="and">
+                    ${key} = #{value}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <!-- 根据用户名查询 -->
+    <select id="selectByUsername" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_user
+        where username = #{username}
+    </select>
+
+    <!-- 新增 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="userId">
+        insert into tb_user(username, password, avatar, bio)
+        values(#{username}, #{password}, #{avatar}, #{bio})
+    </insert>
+
+    <!-- 修改 -->
+    <update id="update">
+        update tb_user
+        <set>
+            <if test="username != null">username = #{username},</if>
+            <if test="password != null">password = #{password},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="bio != null">bio = #{bio},</if>
+            update_time = now()
+        </set>
+        where user_id = #{userId}
+    </update>
+
+    <!-- 删除 -->
+    <delete id="deleteById">
+        delete from tb_user
+        where user_id = #{userId}
+    </delete>
+
+    <!-- 搜索用户 -->
+    <select id="searchUsers" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM tb_user
+        WHERE (username LIKE CONCAT('%', #{keyword}, '%')
+           OR nickname LIKE CONCAT('%', #{keyword}, '%'))
+          AND user_id != #{currentUserId}
+        LIMIT 50
+    </select>
+
+</mapper>

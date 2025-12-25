@@ -1,0 +1,67 @@
+spring:
+  application:
+    name: vblog-backend
+  main:
+    allow-circular-references: true
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/vblog_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: cq
+
+  # Jackson configuration for JSON
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+    charset: UTF-8
+
+  # Character encoding configuration
+  mvc:
+    charset:
+      enabled: true
+      force: true
+      forced-response: true
+  servlet:
+    encoding:
+      enabled: true
+      charset: UTF-8
+      force: true
+      forced-response: true
+    # File upload configuration
+    multipart:
+      enabled: true
+      max-file-size: 100MB # 支持视频文件上传
+      max-request-size: 100MB
+
+# MyBatis configuration
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.vblog.entity
+
+# Server configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+# JWT configuration
+jwt:
+  secret: vblog_secret_key_2023_secure_long_enough_for_hmac_sha256
+  expiration: 86400000 # 24 hours in milliseconds
+
+# File upload configuration
+file:
+  upload:
+    path: uploads
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.vblog: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"

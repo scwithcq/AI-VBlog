@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vblog.mapper.NotificationMapper">
+
+    <resultMap id="BaseResultMap" type="com.vblog.entity.Notification">
+        <id property="notificationId" column="notification_id" />
+        <result property="recipientId" column="recipient_id" />
+        <result property="senderId" column="sender_id" />
+        <result property="type" column="type" />
+        <result property="postId" column="post_id" />
+        <result property="commentId" column="comment_id" />
+        <result property="followeeId" column="followee_id" />
+        <result property="content" column="content" />
+        <result property="isRead" column="is_read" />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        select notification_id, recipient_id, sender_id, type, post_id, comment_id, 
+               followee_id, content, is_read, create_time
+        from tb_notification
+        where notification_id = #{notificationId}
+    </select>
+
+    <!-- 根据条件查询列表 -->
+    <select id="selectByMap" resultMap="BaseResultMap">
+        select notification_id, recipient_id, sender_id, type, post_id, comment_id,
+               followee_id, content, is_read, create_time
+        from tb_notification
+        <where>
+            <if test="recipientId != null">
+                and recipient_id = #{recipientId}
+            </if>
+            <if test="senderId != null">
+                and sender_id = #{senderId}
+            </if>
+            <if test="type != null">
+                and type = #{type}
+            </if>
+            <if test="isRead != null">
+                and is_read = #{isRead}
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <!-- 插入通知 -->
+    <insert id="insert" parameterType="com.vblog.entity.Notification" useGeneratedKeys="true" keyProperty="notificationId">
+        insert into tb_notification (recipient_id, sender_id, type, post_id, comment_id, 
+                                     followee_id, content, is_read, create_time)
+        values (#{recipientId}, #{senderId}, #{type}, #{postId}, #{commentId}, 
+                #{followeeId}, #{content}, #{isRead}, #{createTime})
+    </insert>
+
+    <!-- 更新通知 -->
+    <update id="update" parameterType="com.vblog.entity.Notification">
+        update tb_notification
+        <set>
+            <if test="isRead != null">
+                is_read = #{isRead},
+            </if>
+        </set>
+        where notification_id = #{notificationId}
+    </update>
+
+    <!-- 根据ID删除 -->
+    <delete id="deleteById">
+        delete from tb_notification where notification_id = #{notificationId}
+    </delete>
+    <!-- 获取未读通知数 -->
+    <select id="getUnreadCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM tb_notification
+        WHERE recipient_id = #{userId}
+        AND is_read = 0
+    </select>
+
+    <!-- 批量标记为已读 -->
+    <update id="markAsReadByRecipient">
+        update tb_notification
+        set is_read = 1
+        where recipient_id = #{recipientId}
+          and is_read = 0
+          <if test="type != null">
+              and type = #{type}
+          </if>
+    </update>
+
+</mapper>

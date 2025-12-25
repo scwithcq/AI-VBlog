@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vblog.mapper.CommentLikeMapper">
+
+    <!-- Result Map -->
+    <resultMap id="BaseResultMap" type="com.vblog.entity.CommentLike">
+        <id column="like_id" property="likeId" jdbcType="BIGINT"/>
+        <result column="comment_id" property="commentId" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- Base Column List -->
+    <sql id="Base_Column_List">
+        like_id, comment_id, user_id, create_time, update_time
+    </sql>
+
+    <!-- Select by id -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM tb_comment_like
+        WHERE like_id = #{likeId}
+    </select>
+
+    <!-- Select by map -->
+    <select id="selectByMap" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM tb_comment_like
+        <where>
+            <if test="commentId != null">
+                AND comment_id = #{commentId}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+        </where>
+        LIMIT 1
+    </select>
+
+    <!-- Count by comment id -->
+    <select id="countByCommentId" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM tb_comment_like
+        WHERE comment_id = #{commentId}
+    </select>
+
+    <!-- Insert -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="likeId">
+        INSERT INTO tb_comment_like (comment_id, user_id, create_time, update_time)
+        VALUES (#{commentId}, #{userId}, NOW(), NOW())
+    </insert>
+
+    <!-- Delete by id -->
+    <delete id="deleteById">
+        DELETE FROM tb_comment_like
+        WHERE like_id = #{likeId}
+    </delete>
+
+    <!-- Delete by map -->
+    <delete id="deleteByMap">
+        DELETE FROM tb_comment_like
+        <where>
+            <if test="commentId != null">
+                AND comment_id = #{commentId}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+        </where>
+    </delete>
+
+</mapper>

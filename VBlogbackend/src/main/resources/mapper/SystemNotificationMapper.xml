@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vblog.mapper.SystemNotificationMapper">
+
+    <resultMap id="BaseResultMap" type="com.vblog.entity.SystemNotification">
+        <id property="id" column="id" />
+        <result property="recipientId" column="recipient_id" />
+        <result property="senderId" column="sender_id" />
+        <result property="senderUsername" column="sender_username" />
+        <result property="senderAvatar" column="sender_avatar" />
+        <result property="type" column="type" />
+        <result property="postId" column="post_id" />
+        <result property="commentId" column="comment_id" />
+        <result property="content" column="content" />
+        <result property="isRead" column="is_read" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT id, recipient_id, sender_id, sender_username, sender_avatar, type,
+               post_id, comment_id, content, is_read, create_time, update_time
+        FROM tb_system_notification
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据条件查询列表 -->
+    <select id="selectByMap" resultMap="BaseResultMap">
+        SELECT id, recipient_id, sender_id, sender_username, sender_avatar, type,
+               post_id, comment_id, content, is_read, create_time, update_time
+        FROM tb_system_notification
+        <where>
+            <if test="recipientId != null">
+                AND recipient_id = #{recipientId}
+            </if>
+            <if test="senderId != null">
+                AND sender_id = #{senderId}
+            </if>
+            <if test="type != null and type != ''">
+                AND type = #{type}
+            </if>
+            <if test="isRead != null">
+                AND is_read = #{isRead}
+            </if>
+            <if test="postId != null">
+                AND post_id = #{postId}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 插入通知 -->
+    <insert id="insert" parameterType="com.vblog.entity.SystemNotification" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO tb_system_notification (recipient_id, sender_id, sender_username, sender_avatar,
+                                            type, post_id, comment_id, content, is_read, create_time)
+        VALUES (#{recipientId}, #{senderId}, #{senderUsername}, #{senderAvatar},
+                #{type}, #{postId}, #{commentId}, #{content}, #{isRead}, #{createTime})
+    </insert>
+
+    <!-- 更新通知 -->
+    <update id="update" parameterType="com.vblog.entity.SystemNotification">
+        UPDATE tb_system_notification
+        <set>
+            <if test="isRead != null">
+                is_read = #{isRead},
+            </if>
+            <if test="content != null">
+                content = #{content},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID删除 -->
+    <delete id="deleteById">
+        DELETE FROM tb_system_notification WHERE id = #{id}
+    </delete>
+
+    <!-- 统计未读通知数 -->
+    <select id="countUnread" resultType="int">
+        SELECT COUNT(*) FROM tb_system_notification
+        WHERE recipient_id = #{recipientId} AND is_read = 0
+    </select>
+
+    <!-- 批量标记为已读 -->
+    <update id="markAsReadByRecipient">
+        UPDATE tb_system_notification
+        SET is_read = 1
+        WHERE recipient_id = #{recipientId} AND is_read = 0
+        <if test="type != null and type != ''">
+            AND type = #{type}
+        </if>
+    </update>
+
+    <!-- 批量标记指定ID列表为已读 -->
+    <update id="markAsReadByIds">
+        UPDATE tb_system_notification
+        SET is_read = 1
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <!-- 删除指定天数之前的已读通知 -->
+    <delete id="deleteReadNotificationsBeforeDays">
+        DELETE FROM tb_system_notification
+        WHERE is_read = 1
+        AND create_time &lt; DATE_SUB(NOW(), INTERVAL #{days} DAY)
+    </delete>
+
+    <!-- 根据类型统计未读通知数 -->
+    <select id="countUnreadByType" resultType="int">
+        SELECT COUNT(*) FROM tb_system_notification
+        WHERE recipient_id = #{recipientId}
+        AND is_read = 0
+        AND type = #{type}
+    </select>
+
+</mapper>

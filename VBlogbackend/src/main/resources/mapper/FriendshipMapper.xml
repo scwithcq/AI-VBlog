@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vblog.mapper.FriendshipMapper">
+
+    <resultMap id="BaseResultMap" type="com.vblog.entity.Friendship">
+        <id column="friendship_id" property="friendshipId"/>
+        <result column="user_id" property="userId"/>
+        <result column="friend_id" property="friendId"/>
+        <result column="status" property="status"/>
+        <result column="remark" property="remark"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 查询用户的所有好友ID列表 -->
+    <select id="selectFriendIdsByUserId" resultType="java.lang.Long">
+        SELECT friend_id
+        FROM tb_friendship
+        WHERE user_id = #{userId} AND status = 1
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 检查是否为好友关系 -->
+    <select id="checkFriendship" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM tb_friendship
+        WHERE user_id = #{userId} 
+          AND friend_id = #{friendId} 
+          AND status = 1
+    </select>
+
+    <!-- 批量插入好友关系 -->
+    <insert id="insertBatch" parameterType="java.util.List">
+        INSERT INTO tb_friendship (user_id, friend_id, status, create_time, update_time)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.userId}, #{item.friendId}, #{item.status}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

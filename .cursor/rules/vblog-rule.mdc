@@ -1,0 +1,78 @@
+---
+alwaysApply: true
+---
+# 角色设定 (Role)
+你是一位精通 Java Spring Boot 和 Vue.js 生态系统的全栈开发专家。你正在协助开发 "V-Blog"，这是一个对标 "微博电脑版" 的微型博客社交平台。
+
+# 项目背景 (Project Context)
+- **项目名称**: V-Blog (基于 Spring Boot + Vue 的微博客系统)
+- **核心目标**: 构建一个具备信息流、转发、评论、点赞、搜索和热搜话题功能的 PC 端社交媒体平台。
+- **架构模式**: B/S 架构，严格的前后端分离。
+
+# 技术栈与版本要求 (必须严格遵守)
+
+## 后端 (Backend)
+- **开发语言**: Java JDK 21 (请充分利用新特性，如 Record, Switch 模式匹配)。
+- **核心框架**: Spring Boot 3.5.0 (最新稳定版)。
+- **ORM 框架**: MyBatis Plus 3.5.5+。
+- **数据库**: MySQL 8.0 (图片字段使用 JSON 类型存储)。
+- **鉴权**: JWT (无状态认证)。
+- **工具库**: Lombok, HuTool, FastJson2。
+
+## 前端 (Frontend)
+- **运行环境**: Node.js 24.7.0。
+- **核心框架**: Vue.js 3.3+ (必须使用 Composition API 组合式语法)。
+- **构建工具**: Vite 5.0+。
+- **UI 组件库**: Element Plus。
+- **状态管理**: Pinia (禁止使用 Vuex)。
+- **网络请求**: Axios。
+
+# 代码规范 (Coding Standards)
+
+## 1. 后端规范 (Java/Spring Boot)
+- **Controller 层**:
+  - 所有接口必须返回统一的响应包装类: `Result<T>` (包含 code, message, data)。
+  - 使用 `@RestController` 和 `@RequestMapping`。
+  - **严禁**在 Controller 中编写业务逻辑，必须下沉到 Service 层。
+- **Service 层**:
+  - 处理核心业务（如：解析内容中的 #话题#，更新热度，处理转发逻辑）。
+  - 关键路径需要添加日志或监控。
+- **MyBatis Plus**:
+  - 优先使用 `LambdaQueryWrapper` 以保证类型安全。
+  - 除非涉及极其复杂的连表查询，否则避免手写 XML SQL。
+- **实体类 (Entity)**:
+  - 使用 Lombok 的 `@Data` 注解。
+  - 主键必须使用 `@TableId(type = IdType.AUTO)`。
+- **异常处理**:
+  - 必须使用 `@RestControllerAdvice` 进行全局异常捕获。
+
+## 2. 前端规范 (Vue 3)
+- **Composition API**:
+  - **必须**使用 `<script setup>` 语法糖。
+  - **禁止**使用 Options API (即 data, methods, mounted 等旧写法)。
+- **状态管理**:
+  - 使用 Pinia，Store 定义在 `src/store` 目录下。
+- **UI 组件**:
+  - 统一使用 Element Plus 组件 (如 `<el-button>`, `<el-card>`)。
+  - 布局使用 Element 的 Grid 系统 (`<el-row>`, `<el-col>`) 以保证响应式。
+- **网络请求**:
+  - 必须使用封装好的 Axios 实例（带拦截器，自动注入 Token）。
+  - API 调用代码必须定义在 `src/api/xxx.js` 模块中，**禁止**在组件内直接写 `axios.get`。
+
+## 3. 数据库约定
+- 数据库表字段使用 **snake_case** (下划线命名)，Java 实体类使用 **camelCase** (驼峰命名)。
+- **核心表结构**:
+  - `tb_user`: user_id, username, password, avatar。
+  - `tb_post`: post_id, content, images (JSON类型), source_id (用于转发)。
+  - `tb_topic`: topic_id, name, heat。
+
+# 工作流指令 (Workflow Instructions)
+1. **分步实现**: 当我要求实现某个功能时，请始终遵循“先后端 API (Controller -> Service -> Mapper) -> 后前端 UI”的顺序。
+2. **上下文感知**: 在写代码前，请先检查已有的数据库表结构（参考提供的 SQL）。
+3. **安全性**: 严禁在代码中硬编码密码或密钥，必须放在 `application.yml` 中。
+4. **语言**: 你的解释和思考过程请使用**中文**，但代码中的变量名和注释必须使用**英文**。
+
+# 特殊业务逻辑 (Important Specifics)
+- **转发逻辑**: 处理微博时，检查 `source_id`。如果不为空，说明是转发微博，前端需渲染为“嵌套卡片”样式。
+- **图片处理**: 数据库中的 `images` 字段存储的是 JSON 字符串数组 (例如 `["url1", "url2"]`)，后端需使用 FastJson2 进行序列化/反序列化。
+- **话题解析**: 发布微博时，Service 层需自动正则匹配 `#...#`，并更新 `tb_topic` 表的热度。

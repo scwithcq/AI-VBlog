@@ -1,0 +1,80 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vblog.mapper.TopicMapper">
+
+    <!-- 通用查询结果映射 -->
+    <resultMap id="BaseResultMap" type="com.vblog.entity.Topic">
+        <id column="topic_id" property="topicId" />
+        <result column="name" property="name" />
+        <result column="heat" property="heat" />
+        <result column="create_time" property="createTime" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        topic_id, name, heat, create_time
+    </sql>
+
+    <!-- 查询单条 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_topic
+        where topic_id = #{topicId}
+    </select>
+
+    <!-- 查询所有 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_topic
+        order by heat desc
+    </select>
+
+    <!-- 根据条件查询 -->
+    <select id="selectByMap" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_topic
+        <where>
+            <if test="map != null and map.size() > 0">
+                <foreach collection="map" item="value" index="key" separator="and">
+                    ${key} = #{value}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <!-- 新增 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="topicId">
+        insert into tb_topic(name, heat)
+        values(#{name}, #{heat})
+    </insert>
+
+    <!-- 修改 -->
+    <update id="update">
+        update tb_topic
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="heat != null">heat = #{heat},</if>
+        </set>
+        where topic_id = #{topicId}
+    </update>
+
+    <!-- 删除 -->
+    <delete id="deleteById">
+        delete from tb_topic
+        where topic_id = #{topicId}
+    </delete>
+
+    <!-- 根据名称查询话题 -->
+    <select id="selectByName" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_topic
+        where name = #{name}
+    </select>
+
+    <!-- 增加话题热度 -->
+    <update id="increaseHeat">
+        update tb_topic
+        set heat = heat + #{amount}
+        where topic_id = #{topicId}
+    </update>
+</mapper>

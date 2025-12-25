@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vblog.mapper.FollowMapper">
+
+    <!-- 通用查询结果映射 -->
+    <resultMap id="BaseResultMap" type="com.vblog.entity.Follow">
+        <id column="id" property="followId" />
+        <result column="follower_id" property="followerId" />
+        <result column="followee_id" property="followeeId" />
+        <result column="create_time" property="createTime" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, follower_id, followee_id, create_time
+    </sql>
+
+    <!-- 查询单条 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_follow
+        where follow_id = #{followId}
+    </select>
+
+    <!-- 查询所有 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_follow
+    </select>
+
+    <!-- 根据条件查询 -->
+    <select id="selectByMap" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_follow
+        <where>
+            <if test="map != null and map.size() > 0">
+                <foreach collection="map" item="value" index="key" separator="and">
+                    ${key} = #{value}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <!-- 新增 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="followId">
+        insert into tb_follow(follower_id, followee_id)
+        values(#{followerId}, #{followeeId})
+    </insert>
+
+    <!-- 删除 -->
+    <delete id="deleteById">
+        delete from tb_follow
+        where follow_id = #{followId}
+    </delete>
+
+    <!-- 根据用户ID删除关注关系 -->
+    <delete id="deleteByUserIds">
+        delete from tb_follow
+        where follower_id = #{followerId} and followee_id = #{followeeId}
+    </delete>
+
+</mapper>

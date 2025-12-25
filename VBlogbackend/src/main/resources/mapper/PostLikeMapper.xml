@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vblog.mapper.PostLikeMapper">
+
+    <!-- 通用查询结果映射 -->
+    <resultMap id="BaseResultMap" type="com.vblog.entity.PostLike">
+        <id column="like_id" property="likeId" />
+        <result column="post_id" property="postId" />
+        <result column="user_id" property="userId" />
+        <result column="create_time" property="createTime" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        like_id, post_id, user_id, create_time
+    </sql>
+
+    <!-- 查询单条 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_post_like
+        where like_id = #{likeId}
+    </select>
+
+    <!-- 查询所有 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_post_like
+    </select>
+
+    <!-- 根据条件查询 -->
+    <select id="selectByMap" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_post_like
+        <where>
+            <if test="map != null and map.size() > 0">
+                <foreach collection="map" item="value" index="key" separator="and">
+                    ${key} = #{value}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <!-- 新增 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="likeId">
+        insert into tb_post_like(post_id, user_id)
+        values(#{postId}, #{userId})
+    </insert>
+
+    <!-- 删除 -->
+    <delete id="deleteById">
+        delete from tb_post_like
+        where like_id = #{likeId}
+    </delete>
+
+    <!-- 根据用户ID和帖子ID删除点赞 -->
+    <delete id="deleteByUserAndPostId">
+        delete from tb_post_like
+        where post_id = #{postId} and user_id = #{userId}
+    </delete>
+
+    <!-- 查询用户是否已点赞帖子 -->
+    <select id="selectByUserAndPostId" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from tb_post_like
+        where post_id = #{postId} and user_id = #{userId}
+    </select>
+
+</mapper>

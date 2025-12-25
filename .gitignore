@@ -1,0 +1,18 @@
+# ===== 前端 =====
+node_modules/
+dist/
+.env
+.env.*
+
+# ===== 后端 =====
+target/
+*.log
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.iml
+
+# ===== OS =====
+.DS_Store
+Thumbs.db

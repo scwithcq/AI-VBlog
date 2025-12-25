@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V-Blog API 测试工具</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 10px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .config-section {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+    }
+
+    .config-section h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #555;
+      font-weight: 500;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 5px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #218838;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c82333;
+    }
+
+    .btn-info {
+      background: #17a2b8;
+      color: white;
+    }
+
+    .btn-info:hover {
+      background: #138496;
+    }
+
+    .console-output {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+      border-radius: 8px;
+      height: 500px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .console-output::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .console-output::-webkit-scrollbar-track {
+      background: #2d2d2d;
+    }
+
+    .console-output::-webkit-scrollbar-thumb {
+      background: #555;
+      border-radius: 4px;
+    }
+
+    .log-success {
+      color: #4ec9b0;
+    }
+
+    .log-error {
+      color: #f48771;
+    }
+
+    .log-info {
+      color: #9cdcfe;
+    }
+
+    .log-warning {
+      color: #dcdcaa;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-card h3 {
+      font-size: 14px;
+      margin-bottom: 10px;
+      opacity: 0.9;
+    }
+
+    .stat-card .value {
+      font-size: 32px;
+      font-weight: bold;
+    }
+
+    .section-title {
+      color: #333;
+      margin: 30px 0 15px 0;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #667eea;
+      font-size: 20px;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 V-Blog API 测试工具</h1>
+    <p class="subtitle">消息和好友系统接口测试平台</p>
+
+    <!-- 配置区域 -->
+    <div class="config-section">
+      <h2>⚙️ 配置</h2>
+      <div class="form-group">
+        <label for="apiToken">JWT Token (必填):</label>
+        <input type="text" id="apiToken" placeholder="请输入你的 JWT Token">
+      </div>
+      <div class="form-group">
+        <label for="testUserId">测试用户ID (选填):</label>
+        <input type="number" id="testUserId" placeholder="用于测试的目标用户ID" value="2">
+      </div>
+      <div class="form-group">
+        <label for="baseUrl">API 基础地址:</label>
+        <input type="text" id="baseUrl" value="http://localhost:8080/api">
+      </div>
+    </div>
+
+    <!-- 统计区域 -->
+    <div class="stats">
+      <div class="stat-card">
+        <h3>总测试数</h3>
+        <div class="value" id="totalTests">0</div>
+      </div>
+      <div class="stat-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+        <h3>通过</h3>
+        <div class="value" id="passedTests">0</div>
+      </div>
+      <div class="stat-card" style="background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);">
+        <h3>失败</h3>
+        <div class="value" id="failedTests">0</div>
+      </div>
+      <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+        <h3>通过率</h3>
+        <div class="value" id="passRate">0%</div>
+      </div>
+    </div>
+
+    <!-- 快速操作 -->
+    <h3 class="section-title">🎯 快速操作</h3>
+    <div class="button-group">
+      <button class="btn-success" onclick="runAllTests()">▶️ 运行全部测试</button>
+      <button class="btn-info" onclick="clearConsole()">🗑️ 清空控制台</button>
+      <button class="btn-danger" onclick="resetStats()">🔄 重置统计</button>
+    </div>
+
+    <!-- 好友系统测试 -->
+    <h3 class="section-title">👥 好友系统测试</h3>
+    <div class="button-group">
+      <button class="btn-primary" onclick="testSearchUsers()">搜索用户</button>
+      <button class="btn-primary" onclick="testSendFriendRequest()">发送好友申请</button>
+      <button class="btn-primary" onclick="testGetReceivedRequests()">获取收到的申请</button>
+      <button class="btn-primary" onclick="testGetSentRequests()">获取发送的申请</button>
+      <button class="btn-primary" onclick="testGetFriendList()">获取好友列表</button>
+      <button class="btn-primary" onclick="testGetFriendCount()">获取好友数量</button>
+      <button class="btn-primary" onclick="testCheckFriendship()">检查好友关系</button>
+    </div>
+
+    <!-- 消息系统测试 -->
+    <h3 class="section-title">💬 消息系统测试</h3>
+    <div class="button-group">
+      <button class="btn-primary" onclick="testGetConversations()">获取会话列表</button>
+      <button class="btn-primary" onclick="testGenerateConversationId()">生成会话ID</button>
+      <button class="btn-primary" onclick="testSendMessage()">发送测试消息</button>
+      <button class="btn-primary" onclick="testGetUnreadCount()">获取未读数</button>
+      <button class="btn-primary" onclick="testWebSocketConnect()">测试 WebSocket</button>
+    </div>
+
+    <!-- 控制台输出 -->
+    <h3 class="section-title">📊 控制台输出</h3>
+    <div class="console-output" id="consoleOutput">
+      <div class="log-info">欢迎使用 V-Blog API 测试工具！</div>
+      <div class="log-warning">⚠️ 请先配置 JWT Token 后再开始测试</div>
+    </div>
+  </div>
+
+  <script>
+    const BASE_URL_KEY = 'baseUrl';
+    const TOKEN_KEY = 'apiToken';
+    
+    let testStats = {
+      total: 0,
+      passed: 0,
+      failed: 0
+    };
+
+    // 工具函数
+    function getConfig() {
+      return {
+        baseUrl: document.getElementById('baseUrl').value,
+        token: document.getElementById('apiToken').value,
+        testUserId: document.getElementById('testUserId').value
+      };
+    }
+
+    function log(message, type = 'info') {
+      const output = document.getElementById('consoleOutput');
+      const timestamp = new Date().toLocaleTimeString();
+      const logClass = `log-${type}`;
+      const line = document.createElement('div');
+      line.className = logClass;
+      line.textContent = `[${timestamp}] ${message}`;
+      output.appendChild(line);
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function clearConsole() {
+      document.getElementById('consoleOutput').innerHTML = '';
+      log('控制台已清空', 'info');
+    }
+
+    function updateStats() {
+      document.getElementById('totalTests').textContent = testStats.total;
+      document.getElementById('passedTests').textContent = testStats.passed;
+      document.getElementById('failedTests').textContent = testStats.failed;
+      const rate = testStats.total > 0 ? ((testStats.passed / testStats.total) * 100).toFixed(1) : 0;
+      document.getElementById('passRate').textContent = rate + '%';
+    }
+
+    function resetStats() {
+      testStats = { total: 0, passed: 0, failed: 0 };
+      updateStats();
+      log('统计数据已重置', 'info');
+    }
+
+    async function request(url, method = 'GET', data = null) {
+      const config = getConfig();
+      
+      if (!config.token) {
+        log('❌ 错误: 请先配置 JWT Token', 'error');
+        return { code: -1, msg: '未配置Token' };
+      }
+
+      const options = {
+        method,
+        headers: {
+          'Authorization': `Bearer ${config.token}`
+        }
+      };
+
+      if (data) {
+        if (method === 'GET') {
+          const params = new URLSearchParams(data);
+          url += (url.includes('?') ? '&' : '?') + params.toString();
+        } else {
+          const formData = new URLSearchParams();
+          Object.keys(data).forEach(key => {
+            if (data[key] !== null && data[key] !== undefined) {
+              formData.append(key, data[key]);
+            }
+          });
+          options.body = formData;
+          options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        }
+      }
+
+      try {
+        log(`📤 发送请求: ${method} ${url}`, 'info');
+        const response = await fetch(config.baseUrl + url, options);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.code !== 0) {
+          log(`⚠️ 业务错误: ${result.msg || '未知错误'}`, 'warning');
+        }
+        
+        return result;
+      } catch (error) {
+        log(`❌ 请求异常: ${error.message}`, 'error');
+        return { code: -1, msg: error.message };
+      }
+    }
+
+    function recordTest(name, success, result = null) {
+      testStats.total++;
+      if (success) {
+        testStats.passed++;
+        log(`✅ ${name} - 测试通过`, 'success');
+        if (result && result.data) {
+          const dataPreview = JSON.stringify(result.data).substring(0, 100);
+          log(`   数据: ${dataPreview}${JSON.stringify(result.data).length > 100 ? '...' : ''}`, 'info');
+        }
+      } else {
+        testStats.failed++;
+        log(`❌ ${name} - 测试失败: ${result?.msg || '未知错误'}`, 'error');
+      }
+      updateStats();
+    }
+
+    // 好友系统测试函数
+    async function testSearchUsers() {
+      log('🔍 开始测试: 搜索用户', 'info');
+      const keyword = prompt('请输入搜索关键词:', 'test');
+      if (!keyword) {
+        log('⚠️ 测试取消: 未输入关键词', 'warning');
+        return;
+      }
+      
+      const result = await request('/friendship/search', 'GET', { keyword });
+      if (result) {
+        log(`📊 找到 ${result.data?.length || 0} 个用户`, 'info');
+      }
+      recordTest('搜索用户', result && result.code === 0, result);
+    }
+{
+        log('⚠️ 测试取消: 未输入用户ID', 'warning');
+        return;
+      }
+
+      const result = await request('/friendship/request', 'POST', {
+        toUserId,
+        message: '你好，这是API测试消息，请忽略'
+      });
+      recordTest('发送好友申请', result && result.code === 0, resulthip/request', 'POST', {
+        toUserId,
+        message: '你好，我想加你为好友'
+      });
+      log(`响应: ${JSON.stringify(result, null, 2)}`, 'info');
+      recordTest('发送好友申请', result.code === 0);
+    }
+
+    async function testGetReceivedRequests() {
+      if (result && result.code === 0) {
+        log(`📊 收到 ${result.data?.length || 0} 个好友申请`, 'info');
+      }
+      recordTest('获取收到的申请', result && result.code === 0, result);
+    }
+
+    async function testGetSentRequests() {
+      log('📤 开始测试: 获取发送的好友申请', 'info');
+      const result = await request('/friendship/requests/sent');
+      if (result && result.code === 0) {
+        log(`📊 已发送 ${result.data?.length || 0} 个好友申请`, 'info');
+      }
+      recordTest('获取发送的申请', result && result.code === 0, result);
+    }
+
+    async function testGetFriendList() {
+      log('👥 开始测试: 获取好友列表', 'info');
+      const result = await request('/friendship/friends');
+      if (result && result.code === 0) {
+        log(`📊 共有 ${result.data?.length || 0} 个好友`, 'info');
+      }
+      recordTest('获取好友列表', result && result.code === 0, result);
+      return result;
+    }
+
+    async function testGetFriendCount() {
+      log('🔢 开始测试: 获取好友数量', 'info');
+      const result = await request('/friendship/count');
+      if (result && result.code === 0) {
+        log(`📊 好友总数: ${result.data}`, 'info');
+      }
+      recordTest('获取好友数量', result && result.code === 0, result);
+    }
+
+    async function testCheckFriendship() {
+      log('🔍 开始测试: 检查好友关系', 'info');
+      const config = getConfig();
+      const userId = config.testUserId || prompt('请输入用户ID:');
+      if (!userId) {
+        log('⚠️ 测试取消: 未输入用户ID', 'warning');
+        return;
+      }
+
+      if (result && result.code === 0) {
+        log(`📊 共有 ${result.data?.length || 0} 个会话`, 'info');
+      }
+      recordTest('获取会话列表', result && result.code === 0, result);
+      return result;
+    }
+
+    async function testGenerateConversationId() {
+      log('🆔 开始测试: 生成会话ID', 'info');
+      const config = getConfig();
+      const otherUserId = config.testUserId || prompt('请输入对方用户ID:');
+      if (!otherUserId) {
+        log('⚠️ 测试取消: 未输入用户ID', 'warning');
+        return;
+      }
+
+      const result = await request('/message/conversation/id', 'GET', { otherUserId });
+      if (result && result.code === 0) {
+        log(`📊 会话ID: ${result.data}`, 'info');
+      }
+      recordTest('生成会话ID', result && result.code === 0, result);
+    }
+
+    async function testSendMessage() {
+      log('✉️ 开始测试: 发送消息', 'info');
+      const config = getConfig();
+      const toUserId = config.testUserId || prompt('请输入接收者用户ID:');
+      if (!toUserId) {
+        log('⚠️ 测试取消: 未输入用户ID', 'warning');
+        return;
+      }
+
+      const result = await request('/message/send', 'POST', {
+        toUserId,
+        content: '[测试消息] ' + new Date().toLocaleString(),
+        messageType: 1
+      });
+      if (result && result.code === 0) {
+        log(`📊 消息ID: ${result.data?.messageId}`, 'info');
+      }
+      recordTest('发送消息', result && result.code === 0, result);
+    }
+
+    async function testGetUnreadCount() {
+      log('🔔 开始测试: 获取未读消息数', 'info');
+      const result = await request('/message/unread/count');
+      if (result && result.code === 0) {
+        log(`📊 未读消息数: ${result.data}`, 'info');
+      }
+      recordTest('获取未读消息数', result && result.code === 0, resultsend', 'POST', {
+        toUserId,
+        content: '这是一条API测试消息 ' + new Date().toLocaleTimeString(),
+        messageType: 1
+      });
+      log(`响应: ${JSON.stringify(result, null, 2)}`, 'info');
+      recordTest('发送消息', result.code === 0);
+    }
+
+    async function testGetUnreadCount() {
+      log('🔔 开始测试: 获取未读消息数', 'info');
+      
+      try {
+        const ws = new WebSocket(wsUrl);
+        let connected = false;
+
+        ws.onopen = () => {
+          connected = true;
+          log('✅ WebSocket 连接成功', 'success');
+          log('📤 发送心跳包...', 'info');
+          ws.send(JSON.stringify({ type: 'ping' }));
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            log(`📨 收到消息类型: ${data.type}`, 'info');
+            if (data.type === 'pong') {
+              log('💓 心跳响应正常', 'success');
+            }
+          } catch (e) {
+            log(`📨 收到原始数据: ${event.data.substring(0, 100)}`, 'info');
+          }
+        };
+
+        ws.onerror = (error) => {
+          log(`❌ WebSocket 连接失败`, 'error');
+          log(`💡 请确保后端WebSocket服务正在运行`, 'warning');
+        };
+
+        ws.onclose = (event) => {
+          if (connected) {
+            log('⚠️ WebSocket 连接已关闭', 'warning');
+          } else {
+            log('❌ WebSocket 无法建立连接', 'error');
+          }
+        };
+
+        // 5秒后自动关闭
+        setTimeout(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.close();
+            log('🔌 测试完成，已主动关闭连接', 'info');
+      const config = getConfig();
+      if (!config.token) {
+        log('❌ 错误: 请先配置 JWT Token', 'error');
+        return;
+      }
+      
+      log('═══════════════════════════════════════', 'info');
+      log('🚀 开始运行所有测试...', 'info');
+      log('═══════════════════════════════════════', 'info');
+      resetStats();
+      
+      // 好友系统测试
+      log('\n【好友系统测试】', 'info');
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      log('\n➤ 测试1/9: 获取收到的好友申请', 'info');
+      await testGetReceivedRequests();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      log('\n➤ 测试2/9: 获取发送的好友申请', 'info');
+      await testGetSentRequests();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      log('\n➤ 测试3/9: 获取好友列表', 'info');
+      await testGetFriendList();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      log('\n➤ 测试4/9: 获取好友数量', 'info');
+      await testGetFriendCount();
+      
+      // 消息系统测试
+      log('\n【消息系统测试】', 'info');
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      log('\n➤ 测试5/9: 获取会话列表', 'info');
+      await testGetConversations();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      log('\n➤ 测试6/9: 获取未读消息数', 'info');
+      await testGetUnreadCount();
+      
+      log('\n═══════════════════════════════════════', 'info');
+      log('🎉 所有自动测试执行完成！', 'success');
+      log('═══════════════════════════════════════', 'info');
+      log('\n💡 提示: 以下测试需要手动输入参数:', 'warning');
+      log('  - 搜索用户 (需要输入关键词)', 'warning');
+      log('  - 发送好友申请 (需要确认用户ID)', 'warning');
+      log('  - 检查好友关系 (需要输入用户ID)', 'warning');
+      log('  - 生成会话ID (需要输入用户ID)', 'warning');
+      log('  - 发送消息 (需要确认接收者)', 'warning');
+      log('  - WebSocket测试 (请单独测试)', 'warnings();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testGetSentRequests();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testGetFriendList();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testGetFriendCount();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testCheckFriendship();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testGetConversations();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testGenerateConversationId();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testGetUnreadCount();
+      
+      log('🎉 所有测试执行完成！', 'success');
+    }
+
+    // 页面加载时的初始化
+    window.onload = () => {
+      log('🎯 系统初始化完成，准备就绪！', 'success');
+      log('💡 提示: 请先在上方输入 JWT Token', 'warning');
+    };
+  </script>
+</body>
+</html>

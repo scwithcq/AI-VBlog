@@ -1,0 +1,309 @@
+:root {
+  /* 基础颜色变量 - 深邃暗黑色调 */
+  --primary-color: #8b5cf6;
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --secondary-color: #6366f1;
+  --secondary-gradient: linear-gradient(120deg, #6366f1 0%, #8b5cf6 100%);
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --info-color: #6b7280;
+  --text-main: #e5e7eb;
+  --text-regular: #d1d5db;
+  --text-secondary: #9ca3af;
+  
+  /* 液态玻璃样式变量 - 暗黑模式 */
+  --glass-bg: rgba(17, 24, 39, 0.6);
+  --glass-border: rgba(139, 92, 246, 0.15);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --glass-blur: 20px;
+  --glass-hover-bg: rgba(17, 24, 39, 0.75);
+  --glass-card-bg: rgba(31, 41, 55, 0.5);
+  
+  /* 深色模式下的液态玻璃变量 */
+  --glass-dark-bg: rgba(17, 24, 39, 0.7);
+  --glass-dark-border: rgba(139, 92, 246, 0.2);
+  --glass-dark-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --glass-dark-card-bg: rgba(31, 41, 55, 0.6);
+  
+  /* 字体和间距变量 */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-size-base: 15px;
+  --line-height-base: 1.6;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* 边框和圆角 */
+  --border-radius-sm: 8px;
+  --border-radius-md: 12px;
+  --border-radius-lg: 20px;
+  --border-radius-xl: 24px;
+  --border-radius-full: 50%;
+  
+  /* 过渡效果 */
+  --transition-base: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: all 0.15s ease;
+  
+  /* 全局背景 - 深邃暗黑 */
+  --app-bg: #0f172a;
+  --app-bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+}
+
+/* 全局样式 */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family);
+  line-height: var(--line-height-base);
+  font-weight: 400;
+  color: var(--text-main);
+  background: var(--app-bg);
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(250, 70%, 15%, 0.8) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, hsla(260, 60%, 20%, 0.6) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, hsla(270, 50%, 15%, 0.5) 0, transparent 50%);
+  background-attachment: fixed;
+  background-size: cover;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 通用玻璃卡片类 */
+.glass-card {
+  background: var(--glass-card-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--glass-shadow);
+  transition: var(--transition-base);
+}
+
+.glass-card:hover {
+  background: var(--glass-hover-bg);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(139, 92, 246, 0.3);
+}
+
+/* 按钮通用样式优化 */
+.el-button {
+  border-radius: var(--border-radius-md) !important;
+  font-weight: 500 !important;
+}
+
+.el-button--primary {
+  background: var(--primary-gradient) !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+.el-button--primary:hover {
+  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.6);
+  transform: translateY(-1px);
+}
+
+/* 输入框优化 */
+.el-input__wrapper, .el-textarea__inner {
+  border-radius: var(--border-radius-md) !important;
+  box-shadow: none !important;
+  background-color: rgba(31, 41, 55, 0.5) !important;
+  border: 1px solid rgba(139, 92, 246, 0.2) !important;
+  transition: var(--transition-base) !important;
+  color: var(--text-main) !important;
+}
+
+.el-input__wrapper:hover, .el-textarea__inner:hover {
+  background-color: rgba(31, 41, 55, 0.7) !important;
+  border-color: rgba(139, 92, 246, 0.3) !important;
+}
+
+.el-input__wrapper.is-focus, .el-textarea__inner:focus {
+  background-color: rgba(31, 41, 55, 0.8) !important;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3) !important;
+  border-color: var(--primary-color) !important;
+}
+
+  color: #213547;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-attachment: fixed;
+}
+
+/* 液态玻璃基础样式 */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  transition: var(--transition-base);
+}
+
+.glass:hover {
+  background: var(--glass-hover-bg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* 深色模式 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: rgba(255, 255, 255, 0.87);
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  }
+  
+  .glass {
+    background: var(--glass-dark-bg);
+    border: 1px solid var(--glass-dark-border);
+    box-shadow: var(--glass-dark-shadow);
+  }
+  
+  .glass:hover {
+    background: rgba(30, 30, 30, 0.8);
+  }
+}
+
+/* 手动深色模式切换 */
+:root.dark-mode {
+  color: rgba(255, 255, 255, 0.87);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+:root.dark-mode .glass {
+  background: var(--glass-dark-bg);
+  border: 1px solid var(--glass-dark-border);
+  box-shadow: var(--glass-dark-shadow);
+}
+
+:root.dark-mode .glass:hover {
+  background: rgba(30, 30, 30, 0.8);
+}
+
+:root.dark-mode .card {
+  background: var(--glass-dark-bg);
+  border: 1px solid var(--glass-dark-border);
+}
+
+/* 深色模式下的元素调整 */
+:root.dark-mode button {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+:root.dark-mode button:hover {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* 全局重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+a {
+  font-weight: 500;
+  color: var(--primary-color);
+  text-decoration: inherit;
+  transition: var(--transition-base);
+}
+
+a:hover {
+  color: #66b1ff;
+}
+
+button {
+  border-radius: var(--border-radius-md);
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: inherit;
+  cursor: pointer;
+  transition: var(--transition-base);
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+button:hover {
+  border-color: var(--primary-color);
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+button:focus,
+button:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* 应用容器 */
+#app {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+/* 卡片样式 */
+.card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur));
+  padding: var(--spacing-lg);
+  transition: var(--transition-base);
+}
+
+@media (prefers-color-scheme: dark) {
+  .card {
+    background: var(--glass-dark-bg);
+    border: 1px solid var(--glass-dark-border);
+  }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: var(--border-radius-full);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.4);
+  border-radius: var(--border-radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.6);
+}
+
+/* 深色模式滚动条 */
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+  }
+}
