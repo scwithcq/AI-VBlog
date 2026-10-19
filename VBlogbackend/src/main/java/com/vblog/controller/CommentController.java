@@ -15,7 +15,7 @@ import java.util.List;
 
 /**
  * 评论控制器
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -114,11 +114,7 @@ public class CommentController extends BaseController {
         boolean liked = commentService.likeComment(commentId, userId);
         Long likeCount = commentService.getCommentLikeCount(commentId);
 
-        if (liked) {
-            return Result.success("点赞成功", likeCount);
-        } else {
-            return Result.error(400, "已经点赞过该评论");
-        }
+        return Result.success("点赞成功", likeCount);
     }
 
     /**
@@ -134,11 +130,7 @@ public class CommentController extends BaseController {
         boolean unliked = commentService.unlikeComment(commentId, userId);
         Long likeCount = commentService.getCommentLikeCount(commentId);
 
-        if (unliked) {
-            return Result.success("取消点赞成功", likeCount);
-        } else {
-            return Result.error(400, "没有点赞过该评论");
-        }
+        return Result.success("取消点赞成功", likeCount);
     }
 
     /**

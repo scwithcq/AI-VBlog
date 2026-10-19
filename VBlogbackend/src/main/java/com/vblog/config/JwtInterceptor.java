@@ -16,7 +16,7 @@ import java.io.PrintWriter;
 /**
  * JWT拦截器
  * 验证请求头中的JWT令牌
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -25,6 +25,9 @@ public class JwtInterceptor implements HandlerInterceptor {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private RequestSafetyFilter safety;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -53,13 +56,22 @@ public class JwtInterceptor implements HandlerInterceptor {
 
             // 将用户信息存储到请求属性中
             Long userId = jwtUtil.getUserIdFromToken(token);
+            if (!java.util.Set.of("GET", "HEAD", "OPTIONS").contains(request.getMethod())
+                    && !safety.allowWrite(userId, request.getServletPath().startsWith("/file/")
+                            || request.getServletPath().matches("/user/(avatar|background)"))) {
+                response.setStatus(429);
+                response.setHeader("Retry-After", "600");
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"code\":429,\"msg\":\"操作过于频繁，请稍后重试\"}");
+                return false;
+            }
             String username = jwtUtil.getUsernameFromToken(token);
             request.setAttribute("userId", userId);
             request.setAttribute("username", username);
 
             return true;
         } catch (Exception e) {
-            log.error("Failed to process token: ", e);
+            log.debug("Rejected invalid authentication token");
             return writeUnauthorizedResponse(response, "令牌解析失败");
         }
     }

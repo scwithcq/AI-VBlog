@@ -19,6 +19,29 @@
         post_id, user_id, content, images, video_url, source_id, create_time, update_time
     </sql>
 
+    <select id="countAllPosts" resultType="long">SELECT COUNT(*) FROM tb_post</select>
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*) FROM tb_post WHERE user_id = #{userId}
+    </select>
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM tb_post
+        ORDER BY create_time DESC, post_id DESC LIMIT #{size} OFFSET #{offset}
+    </select>
+    <select id="selectUserPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> FROM tb_post
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC, post_id DESC LIMIT #{size} OFFSET #{offset}
+    </select>
+    <select id="selectInteractionStatuses" resultType="com.vblog.entity.PostInteractionStatus">
+        SELECT p.post_id AS post_id,
+               (SELECT COUNT(*) FROM tb_post_like l WHERE l.post_id = p.post_id) AS like_count,
+               (SELECT COUNT(*) FROM tb_post_favorite f WHERE f.post_id = p.post_id) AS favorite_count,
+               EXISTS(SELECT 1 FROM tb_post_like l WHERE l.post_id = p.post_id AND l.user_id = #{userId}) AS liked,
+               EXISTS(SELECT 1 FROM tb_post_favorite f WHERE f.post_id = p.post_id AND f.user_id = #{userId}) AS favorited
+        FROM tb_post p WHERE p.post_id IN
+        <foreach collection="postIds" item="postId" open="(" separator="," close=")">#{postId}</foreach>
+    </select>
+
     <!-- 查询单条 -->
     <select id="selectById" resultMap="BaseResultMap">
         select <include refid="Base_Column_List" />

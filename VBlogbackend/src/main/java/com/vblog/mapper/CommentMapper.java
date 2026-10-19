@@ -4,10 +4,11 @@ import com.vblog.entity.Comment;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * Comment Mapper Interface
- * 
+ *
  * @author V-Blog Team
  */
 public interface CommentMapper {
@@ -34,6 +35,8 @@ public interface CommentMapper {
      * @return comment list
      */
     List<Comment> selectByMap(Map<String, Object> map);
+
+    List<Comment> selectByPostId(@Param("postId") Long postId);
 
     /**
      * Insert

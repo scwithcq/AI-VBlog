@@ -7,7 +7,7 @@ import lombok.EqualsAndHashCode;
 
 /**
  * User Entity
- * 
+ *
  * @author V-Blog Team
  */
 @Data
@@ -28,6 +28,7 @@ public class User extends BaseEntity {
     /**
      * Password (encrypted)
      */
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     /**
@@ -68,7 +69,6 @@ public class User extends BaseEntity {
     /**
      * Background image URL
      */
-    @TableField(exist = false)
     private String background;
 
     /**

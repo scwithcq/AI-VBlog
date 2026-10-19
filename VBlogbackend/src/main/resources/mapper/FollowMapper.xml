@@ -59,4 +59,34 @@
         where follower_id = #{followerId} and followee_id = #{followeeId}
     </delete>
 
+    <select id="selectFollowerIds" resultType="java.lang.Long">
+        SELECT follower_id AS user_id FROM tb_follow WHERE followee_id = #{userId}
+        UNION
+        SELECT f.friend_id AS user_id FROM tb_friendship f
+        WHERE f.user_id = #{userId} AND f.status = 1
+          AND EXISTS (SELECT 1 FROM tb_friendship back
+                      WHERE back.user_id = f.friend_id AND back.friend_id = f.user_id AND back.status = 1)
+    </select>
+
+    <select id="selectFollowingIds" resultType="java.lang.Long">
+        SELECT followee_id AS user_id FROM tb_follow WHERE follower_id = #{userId}
+        UNION
+        SELECT f.friend_id AS user_id FROM tb_friendship f
+        WHERE f.user_id = #{userId} AND f.status = 1
+          AND EXISTS (SELECT 1 FROM tb_friendship back
+                      WHERE back.user_id = f.friend_id AND back.friend_id = f.user_id AND back.status = 1)
+    </select>
+
+    <select id="isMutualFriend" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM tb_friendship f
+                       JOIN tb_friendship back ON back.user_id = f.friend_id AND back.friend_id = f.user_id
+                       WHERE f.user_id = #{userId} AND f.friend_id = #{otherUserId}
+                         AND f.status = 1 AND back.status = 1)
+    </select>
+
+    <select id="existsByUsers" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM tb_follow
+                       WHERE follower_id = #{followerId} AND followee_id = #{followeeId})
+    </select>
+
 </mapper>

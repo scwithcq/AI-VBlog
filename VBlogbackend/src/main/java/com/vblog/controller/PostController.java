@@ -3,6 +3,8 @@ package com.vblog.controller;
 import com.vblog.common.Page;
 import com.vblog.common.Result;
 import com.vblog.entity.Post;
+import com.vblog.entity.PostInteractionStatus;
+import com.vblog.mapper.PostMapper;
 import com.vblog.service.PostService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Min;
@@ -15,7 +17,7 @@ import java.util.List;
 
 /**
  * 帖子控制器
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -26,6 +28,17 @@ import java.util.List;
 public class PostController extends BaseController {
 
     private final PostService postService;
+    private final PostMapper postMapper;
+
+    @GetMapping("/interactions")
+    public Result<List<PostInteractionStatus>> getInteractionStatuses(
+            @RequestParam List<Long> postIds, HttpServletRequest request) {
+        if (postIds.isEmpty() || postIds.size() > 100 || postIds.stream().anyMatch(id -> id == null || id <= 0)) {
+            return Result.error(400, "帖子 ID 数量须在 1 到 100 之间");
+        }
+        Long userId = (Long) request.getAttribute("userId");
+        return Result.success(postMapper.selectInteractionStatuses(userId, postIds));
+    }
 
     /**
      * 发布新帖子
@@ -47,6 +60,7 @@ public class PostController extends BaseController {
                 imageList = com.alibaba.fastjson2.JSON.parseArray(images, String.class);
             } catch (Exception e) {
                 log.warn("Failed to parse images JSON: {}", images);
+                return Result.error(400, "图片格式不正确");
             }
         }
 
@@ -59,8 +73,8 @@ public class PostController extends BaseController {
      */
     @GetMapping("/list")
     public Result<Page<Post>> getPostList(
-            @RequestParam(defaultValue = "1") @Min(1) int page,
-            @RequestParam(defaultValue = "10") @Min(1) int size) {
+            @RequestParam(defaultValue = "1") @Min(1) @jakarta.validation.constraints.Max(100000) int page,
+            @RequestParam(defaultValue = "10") @Min(1) @jakarta.validation.constraints.Max(100) int size) {
 
         Page<Post> postPage = postService.getPostList(page, size);
         return Result.success(postPage);
@@ -84,8 +98,8 @@ public class PostController extends BaseController {
     @GetMapping("/user/{userId}")
     public Result<Page<Post>> getUserPosts(
             @PathVariable Long userId,
-            @RequestParam(defaultValue = "1") @Min(1) int page,
-            @RequestParam(defaultValue = "10") @Min(1) int size) {
+            @RequestParam(defaultValue = "1") @Min(1) @jakarta.validation.constraints.Max(100000) int page,
+            @RequestParam(defaultValue = "10") @Min(1) @jakarta.validation.constraints.Max(100) int size) {
 
         Page<Post> postPage = postService.getUserPosts(userId, page, size);
         return Result.success(postPage);
@@ -184,8 +198,8 @@ public class PostController extends BaseController {
     @GetMapping("/topic/{topicId}")
     public Result<Page<Post>> getPostsByTopic(
             @PathVariable Long topicId,
-            @RequestParam(defaultValue = "1") @Min(1) int page,
-            @RequestParam(defaultValue = "10") @Min(1) int size) {
+            @RequestParam(defaultValue = "1") @Min(1) @jakarta.validation.constraints.Max(100000) int page,
+            @RequestParam(defaultValue = "10") @Min(1) @jakarta.validation.constraints.Max(100) int size) {
 
         Page<Post> postPage = postService.getPostsByTopicId(topicId, page, size);
         return Result.success(postPage);

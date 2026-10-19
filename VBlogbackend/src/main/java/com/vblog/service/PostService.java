@@ -7,14 +7,14 @@ import java.util.List;
 
 /**
  * Post Service Interface
- * 
+ *
  * @author V-Blog Team
  */
 public interface PostService {
 
     /**
      * Publish a new post
-     * 
+     *
      * @param userId User ID
      * @param content Post content
      * @param images Image URLs (JSON array)
@@ -26,7 +26,7 @@ public interface PostService {
 
     /**
      * Get post list (feed) with pagination
-     * 
+     *
      * @param page Page number
      * @param size Page size
      * @return Page of posts
@@ -35,7 +35,7 @@ public interface PostService {
 
     /**
      * Get post by ID
-     * 
+     *
      * @param postId Post ID
      * @return Post entity
      */
@@ -43,17 +43,18 @@ public interface PostService {
 
     /**
      * Get posts by user ID
-     * 
+     *
      * @param userId User ID
      * @param page Page number
      * @param size Page size
      * @return Page of posts
      */
     Page<Post> getUserPosts(Long userId, int page, int size);
+    long countUserPosts(Long userId);
 
     /**
      * Check if post exists
-     * 
+     *
      * @param postId Post ID
      * @return true if exists, false otherwise
      */
@@ -61,24 +62,24 @@ public interface PostService {
 
     /**
      * Get source post (for repost display)
-     * 
+     *
      * @param sourceId Source post ID
      * @return Source post, or null if not exists
      */
     Post getSourcePost(Long sourceId);
-    
+
     /**
      * Delete a post
-     * 
+     *
      * @param postId Post ID
      * @param userId User ID
      * @return true if deleted, false otherwise
      */
     boolean deletePost(Long postId, Long userId);
-    
+
     /**
      * Update a post
-     * 
+     *
      * @param postId Post ID
      * @param userId User ID
      * @param content Post content
@@ -87,10 +88,10 @@ public interface PostService {
      * @return Updated post
      */
     Post updatePost(Long postId, Long userId, String content, List<String> images, String videoUrl);
-    
+
     /**
      * Get posts by topic with pagination
-     * 
+     *
      * @param topicId Topic ID
      * @param page Page number
      * @param size Page size
@@ -98,4 +99,3 @@ public interface PostService {
      */
     Page<Post> getPostsByTopicId(Long topicId, int page, int size);
 }
-

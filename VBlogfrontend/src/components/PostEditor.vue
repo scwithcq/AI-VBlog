@@ -36,7 +36,7 @@ const extractTopics = () => {
 }
 
 const handleImageUpload = async (file) => {
-  if (images.value.length >= MAX_IMAGES) {
+  if (imageUploading.value || images.value.length >= MAX_IMAGES) {
     ElMessage.warning(`最多只能上传${MAX_IMAGES}张图片`)
     return false
   }
@@ -65,7 +65,7 @@ const handleVideoUpload = async (file) => {
   }
 
   // 验证文件类型
-  const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/avi', 'video/mpeg']
+  const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/avi', 'video/webm']
   if (!allowedTypes.includes(videoFile.type)) {
     ElMessage.warning('不支持的视频格式，请上传 MP4、MOV 或 AVI 格式')
     return false
@@ -96,6 +96,7 @@ const removeVideo = () => {
 }
 
 const handlePublish = async () => {
+  if (uploading.value || imageUploading.value || videoUploading.value) return
   if (!content.value.trim() && images.value.length === 0 && !videoUrl.value) {
     ElMessage.warning('请输入内容或上传图片/视频')
     return
@@ -146,10 +147,14 @@ const remainingChars = computed(() => MAX_CONTENT_LENGTH - content.value.length)
 
 <template>
   <div class="post-editor glass-card">
+    <div class="composer-heading">
+      <div><span class="composer-kicker">CREATE A POST</span><h2>分享此刻</h2></div>
+      <span class="composer-hint">你的新鲜事，值得被听见</span>
+    </div>
     <div class="editor-header">
       <el-avatar :src="userStore.userInfo?.avatar" :size="48" class="user-avatar" />
       <div class="editor-input-wrapper">
-        <el-input v-model="content" type="textarea" :rows="3" placeholder="有什么新鲜事想告诉大家？" :maxlength="MAX_CONTENT_LENGTH"
+        <el-input v-model="content" type="textarea" :rows="3" placeholder="这一刻，你想和大家聊些什么？" :maxlength="MAX_CONTENT_LENGTH"
           class="content-input" @input="extractTopics" resize="none" />
       </div>
     </div>
@@ -191,26 +196,26 @@ const remainingChars = computed(() => MAX_CONTENT_LENGTH - content.value.length)
       <div class="toolbar">
         <el-upload :auto-upload="false" :on-change="handleImageUpload" :show-file-list="false" accept="image/*"
           :disabled="imageUploading || images.length >= MAX_IMAGES">
-          <el-button text circle class="tool-btn" :disabled="images.length >= MAX_IMAGES" title="上传图片">
-            <el-icon :size="20" color="#409eff">
+          <el-button text class="tool-btn" :disabled="images.length >= MAX_IMAGES" title="上传图片">
+            <el-icon :size="18">
               <Picture />
-            </el-icon>
+            </el-icon><span>图片</span>
           </el-button>
         </el-upload>
 
         <el-upload :auto-upload="false" :on-change="handleVideoUpload" :show-file-list="false"
-          accept="video/mp4,video/quicktime,video/x-msvideo,video/avi" :disabled="videoUploading || !!videoUrl">
-          <el-button text circle class="tool-btn" :disabled="!!videoUrl" :title="videoUrl ? '已上传视频' : '上传视频 (最大100MB)'">
-            <el-icon :size="20" :color="videoUrl ? '#909399' : '#67c23a'" :class="{ 'is-loading': videoUploading }">
+          accept="video/mp4,video/quicktime,video/x-msvideo,video/avi,video/webm" :disabled="videoUploading || !!videoUrl">
+          <el-button text class="tool-btn" :disabled="!!videoUrl" :title="videoUrl ? '已上传视频' : '上传视频 (最大100MB)'">
+            <el-icon :size="18" :class="{ 'is-loading': videoUploading }">
               <VideoCamera />
-            </el-icon>
+            </el-icon><span>视频</span>
           </el-button>
         </el-upload>
 
-        <el-button text circle class="tool-btn" title="插入话题" @click="content += '#话题#'">
-          <el-icon :size="20" color="#e6a23c">
+        <el-button text class="tool-btn" title="插入话题" @click="content += '#话题#'">
+          <el-icon :size="18">
             <PriceTag />
-          </el-icon>
+          </el-icon><span>话题</span>
         </el-button>
       </div>
 
@@ -218,7 +223,7 @@ const remainingChars = computed(() => MAX_CONTENT_LENGTH - content.value.length)
         <span class="char-count" :class="{ warning: remainingChars < 50 }">
           {{ content.length }}/{{ MAX_CONTENT_LENGTH }}
         </span>
-        <el-button type="primary" round :loading="uploading" @click="handlePublish" class="publish-btn">
+        <el-button type="primary" round :loading="uploading" :disabled="imageUploading || videoUploading" @click="handlePublish" class="publish-btn">
           发布
         </el-button>
       </div>
@@ -228,14 +233,21 @@ const remainingChars = computed(() => MAX_CONTENT_LENGTH - content.value.length)
 
 <style scoped>
 .post-editor {
-  padding: 24px;
+  padding: 24px 26px;
   margin-bottom: 24px;
+  border-color: rgba(255, 165, 135, 0.2);
+  background: linear-gradient(145deg, rgba(35, 40, 60, 0.98), rgba(27, 34, 52, 0.98));
 }
+
+.composer-heading { display: flex; align-items: end; justify-content: space-between; margin-bottom: 22px; }
+.composer-kicker { color: #ffa389; font-size: 10px; font-weight: 800; letter-spacing: .16em; }
+.composer-heading h2 { margin-top: 3px; font-size: 20px; line-height: 1.2; color: var(--text-main); }
+.composer-hint { color: var(--text-secondary); font-size: 12px; }
 
 .editor-header {
   display: flex;
   gap: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 18px;
 }
 
 .user-avatar {
@@ -249,11 +261,12 @@ const remainingChars = computed(() => MAX_CONTENT_LENGTH - content.value.length)
 
 /* 深度选择器修改 Element Plus 输入框样式 */
 :deep(.el-textarea__inner) {
-  background: transparent !important;
+  background: rgba(15, 21, 34, 0.38) !important;
   box-shadow: none !important;
-  padding: 8px 0;
+  padding: 14px 16px;
   font-size: 16px;
-  border: none !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 14px;
   resize: none;
 }
 
@@ -349,23 +362,29 @@ const remainingChars = computed(() => MAX_CONTENT_LENGTH - content.value.length)
   justify-content: space-between;
   align-items: center;
   padding-top: 16px;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-top: 1px solid var(--glass-border);
   margin-left: 64px;
 }
 
 .toolbar {
   display: flex;
-  gap: 8px;
+  gap: 4px;
 }
 
 .tool-btn {
-  width: 36px;
   height: 36px;
-  transition: background 0.2s;
+  padding: 0 10px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  transition: background 0.2s, color 0.2s;
 }
 
 .tool-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(255, 121, 100, 0.1);
+  color: #ffad94;
 }
 
 .publish-section {
@@ -384,8 +403,18 @@ const remainingChars = computed(() => MAX_CONTENT_LENGTH - content.value.length)
 }
 
 .publish-btn {
-  padding: 10px 24px;
+  padding: 10px 28px;
   font-size: 14px;
-  letter-spacing: 1px;
+  letter-spacing: .03em;
+}
+
+@media (max-width: 600px) {
+  .post-editor { padding: 20px 16px; }
+  .composer-hint { display: none; }
+  .editor-header { gap: 10px; }
+  .editor-footer, .topic-hints, .media-preview { margin-left: 0; }
+  .tool-btn { padding: 0 7px; font-size: 12px; }
+  .publish-section { gap: 9px; }
+  .publish-btn { padding: 9px 17px; }
 }
 </style>

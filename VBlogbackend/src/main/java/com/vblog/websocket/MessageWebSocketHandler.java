@@ -5,6 +5,8 @@ import com.vblog.utils.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -12,12 +14,13 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 消息WebSocket处理器
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -28,7 +31,7 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
   private final JwtUtil jwtUtil;
 
   // 存储所有在线用户的session，key为userId
-  private static final Map<Long, WebSocketSession> ONLINE_USERS = new ConcurrentHashMap<>();
+  private static final Map<Long, Map<String, WebSocketSession>> ONLINE_USERS = new ConcurrentHashMap<>();
 
   /**
    * 连接建立时
@@ -39,7 +42,7 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
     Long userId = getUserIdFromSession(session);
 
     if (userId != null) {
-      ONLINE_USERS.put(userId, session);
+      ONLINE_USERS.computeIfAbsent(userId, ignored -> new ConcurrentHashMap<>()).put(session.getId(), session);
       log.info("用户 {} 建立WebSocket连接", userId);
 
       // 发送连接成功消息
@@ -56,7 +59,7 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
   @Override
   protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
     String payload = message.getPayload();
-    log.info("收到WebSocket消息: {}", payload);
+    log.debug("Received WebSocket heartbeat");
 
     // 可以在这里处理心跳、状态更新等消息
     // 实际的消息发送仍通过HTTP API
@@ -69,7 +72,7 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
   public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
     Long userId = getUserIdFromSession(session);
     if (userId != null) {
-      ONLINE_USERS.remove(userId);
+      removeSession(userId, session);
       log.info("用户 {} 断开WebSocket连接", userId);
     }
   }
@@ -85,7 +88,7 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
       session.close(CloseStatus.SERVER_ERROR);
     }
     if (userId != null) {
-      ONLINE_USERS.remove(userId);
+      removeSession(userId, session);
     }
   }
 
@@ -93,15 +96,48 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
    * 向指定用户发送消息
    */
   public void sendMessage(Long userId, String message) {
-    WebSocketSession session = ONLINE_USERS.get(userId);
-    if (session != null && session.isOpen()) {
+    Map<String, WebSocketSession> sessions = ONLINE_USERS.get(userId);
+    if (sessions == null) return;
+    for (WebSocketSession session : sessions.values()) {
+      if (!session.isOpen()) continue;
+      if (getUserIdFromSession(session) == null) {
+        try { session.close(CloseStatus.POLICY_VIOLATION); } catch (IOException ignored) {}
+        removeSession(userId, session);
+        continue;
+      }
       try {
         session.sendMessage(new TextMessage(message));
         log.debug("向用户 {} 发送WebSocket消息", userId);
       } catch (IOException e) {
         log.error("发送WebSocket消息失败，用户ID: {}", userId, e);
-        ONLINE_USERS.remove(userId);
+        removeSession(userId, session);
       }
+    }
+  }
+
+  private void removeSession(Long userId, WebSocketSession session) {
+    Map<String, WebSocketSession> sessions = ONLINE_USERS.get(userId);
+    if (sessions != null) {
+      sessions.remove(session.getId(), session);
+      if (sessions.isEmpty()) ONLINE_USERS.remove(userId, sessions);
+    }
+  }
+
+  public void sendEventAfterCommit(Long userId, String type, Object data) {
+    Map<String, Object> event = new HashMap<>();
+    event.put("type", type);
+    event.put("data", data);
+    event.put("timestamp", System.currentTimeMillis());
+    String payload = JSON.toJSONString(event);
+    if (TransactionSynchronizationManager.isSynchronizationActive()) {
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+          sendMessage(userId, payload);
+        }
+      });
+    } else {
+      sendMessage(userId, payload);
     }
   }
 
@@ -109,7 +145,8 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
    * 检查用户是否在线
    */
   public boolean isUserOnline(Long userId) {
-    return ONLINE_USERS.containsKey(userId);
+    Map<String, WebSocketSession> sessions = ONLINE_USERS.get(userId);
+    return sessions != null && sessions.values().stream().anyMatch(WebSocketSession::isOpen);
   }
 
   /**
@@ -149,7 +186,8 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
    * 创建消息JSON
    */
   private String createMessage(String type, String content, Object data) {
-    Map<String, Object> message = new ConcurrentHashMap<>();
+    // 连接确认消息的 data 可以为 null，ConcurrentHashMap 不接受 null 值。
+    Map<String, Object> message = new HashMap<>();
     message.put("type", type);
     message.put("content", content);
     message.put("data", data);

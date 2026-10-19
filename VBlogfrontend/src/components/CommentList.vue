@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useUserStore } from '../store/userStore'
 import { getCommentsByPostId, addComment } from '../api/comment'
 import { getUserInfo } from '../api/user'
@@ -34,6 +34,7 @@ const mentionUsers = ref([]) // @提及的用户列表
 const showUserSuggestions = ref(false)
 const userSuggestions = ref([])
 const commentInputElement = ref(null)
+let loadVersion = 0
 
 // 计算分页后的评论列表
 const paginatedComments = computed(() => {
@@ -43,10 +44,16 @@ const paginatedComments = computed(() => {
 })
 
 const loadComments = async () => {
+  const version = ++loadVersion
+  const postId = props.postId
   loading.value = true
   try {
-    const result = await getCommentsByPostId(props.postId)
-    let commentList = result || []
+    const result = await getCommentsByPostId(postId)
+    if (version !== loadVersion || postId !== props.postId) return
+    const onlyThisPost = (trees) => (Array.isArray(trees) ? trees : [])
+      .filter(tree => Number(tree.comment?.postId) === Number(postId))
+      .map(tree => ({ ...tree, replies: onlyThisPost(tree.replies) }))
+    const commentList = onlyThisPost(result)
 
     // 按日期排序
     if (sortBy.value === 'newest') {
@@ -56,7 +63,8 @@ const loadComments = async () => {
     }
 
     comments.value = commentList
-    totalComments.value = commentList.length
+    const countTree = trees => trees.reduce((count, tree) => count + 1 + countTree(tree.replies), 0)
+    totalComments.value = countTree(commentList)
     currentPage.value = 1 // 重置到第一页
 
     // Load user info for all comments
@@ -75,7 +83,7 @@ const loadComments = async () => {
       if (!users.value[userId]) {
         try {
           const userInfo = await getUserInfo(userId)
-          users.value[userId] = userInfo
+          if (version === loadVersion) users.value[userId] = userInfo
         } catch (error) {
           console.error(`Failed to load user ${userId}:`, error)
         }
@@ -84,11 +92,12 @@ const loadComments = async () => {
   } catch (error) {
     console.error('Failed to load comments:', error)
   } finally {
-    loading.value = false
+    if (version === loadVersion) loading.value = false
   }
 }
 
 const handleSubmit = async () => {
+  if (submitting.value) return
   if (!commentContent.value.trim()) {
     ElMessage.warning('请输入评论内容')
     return
@@ -105,7 +114,7 @@ const handleSubmit = async () => {
     ElMessage.success('评论成功')
     commentContent.value = ''
     mentionUsers.value = []
-    loadComments()
+    await loadComments()
     emit('commented')
   } catch (error) {
     ElMessage.error('评论失败')
@@ -122,7 +131,8 @@ const handleReply = async (parentId, content) => {
   try {
     await addComment(props.postId, content, parentId)
     ElMessage.success('回复成功')
-    loadComments()
+    await loadComments()
+    emit('commented')
   } catch (error) {
     ElMessage.error('回复失败')
   }
@@ -142,7 +152,7 @@ const handlePageChange = (page) => {
 // 处理输入框内容变化，支持@提及
 const handleCommentInput = (event) => {
   const text = commentContent.value
-  const cursorPos = event.target.selectionStart || text.length
+  const cursorPos = event?.target?.selectionStart ?? text.length
   const textBeforeCursor = text.substring(0, cursorPos)
   const lastAtIndex = textBeforeCursor.lastIndexOf('@')
 
@@ -178,9 +188,19 @@ const selectMentionUser = (user) => {
 
 const emit = defineEmits(['commented'])
 
-onMounted(() => {
+watch(() => props.postId, () => {
+  comments.value = []
+  users.value = {}
+  commentContent.value = ''
+  totalComments.value = 0
+  currentPage.value = 1
   loadComments()
-})
+}, { immediate: true })
+
+const handleDeleted = async () => {
+  await loadComments()
+  emit('commented')
+}
 </script>
 
 <template>
@@ -193,7 +213,7 @@ onMounted(() => {
         <div v-if="showUserSuggestions" class="user-suggestions">
           <div v-for="user in userSuggestions" :key="user.userId" class="suggestion-item"
             @click="selectMentionUser(user)">
-            <img :src="user.avatar || '/default-avatar.png'" :alt="user.username" class="suggestion-avatar" />
+            <img :src="user.avatar || '/default-avatar.jpg'" :alt="user.username" class="suggestion-avatar" />
             <span>{{ user.username }}</span>
           </div>
         </div>
@@ -226,7 +246,7 @@ onMounted(() => {
       <div v-else class="comments-wrapper">
         <CommentItem v-for="commentTree in paginatedComments" :key="commentTree.comment.commentId"
           :comment="commentTree.comment" :user="users[commentTree.comment.userId]" :replies="commentTree.replies"
-          :users="users" @reply="handleReply" />
+          :users="users" @reply="handleReply" @delete="handleDeleted" />
       </div>
 
       <!-- 分页 -->

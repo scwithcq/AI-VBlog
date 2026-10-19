@@ -5,9 +5,9 @@ spring:
     allow-circular-references: true
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/vblog_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: cq
+    url: ${DB_URL:jdbc:mysql://localhost:3306/vblog_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:}
 
   # Jackson configuration for JSON
   jackson:
@@ -32,13 +32,13 @@ spring:
     multipart:
       enabled: true
       max-file-size: 100MB # 支持视频文件上传
-      max-request-size: 100MB
+      max-request-size: 110MB
 
 # MyBatis configuration
 mybatis:
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: ${MYBATIS_LOG_IMPL:org.apache.ibatis.logging.nologging.NoLoggingImpl}
   mapper-locations: classpath*:/mapper/**/*.xml
   type-aliases-package: com.vblog.entity
 
@@ -50,13 +50,13 @@ server:
 
 # JWT configuration
 jwt:
-  secret: vblog_secret_key_2023_secure_long_enough_for_hmac_sha256
+  secret: ${JWT_SECRET}
   expiration: 86400000 # 24 hours in milliseconds
 
 # File upload configuration
 file:
   upload:
-    path: uploads
+    path: ${FILE_UPLOAD_PATH:}
 
 # Logging configuration
 logging:

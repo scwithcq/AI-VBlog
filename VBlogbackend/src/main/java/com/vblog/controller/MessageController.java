@@ -19,7 +19,7 @@ import java.util.Map;
 
 /**
  * 消息控制器
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -62,8 +62,12 @@ public class MessageController extends BaseController {
       HttpServletRequest request) {
 
     Long userId = (Long) request.getAttribute("userId");
-    Page<Message> messages = messageService.getConversationMessages(conversationId, userId, page, size);
-    return Result.success(messages);
+    try {
+      Page<Message> messages = messageService.getConversationMessages(conversationId, userId, page, size);
+      return Result.success(messages);
+    } catch (IllegalArgumentException e) {
+      return Result.error(403, e.getMessage());
+    }
   }
 
   /**
@@ -103,7 +107,12 @@ public class MessageController extends BaseController {
       HttpServletRequest request) {
 
     Long userId = (Long) request.getAttribute("userId");
-    boolean success = messageService.markConversationAsRead(conversationId, userId);
+    boolean success;
+    try {
+      success = messageService.markConversationAsRead(conversationId, userId);
+    } catch (IllegalArgumentException e) {
+      return Result.error(403, e.getMessage());
+    }
 
     if (success) {
       return Result.success("标记成功");

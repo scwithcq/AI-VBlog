@@ -21,7 +21,7 @@ import java.util.Map;
 
 /**
  * 用户控制器
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -32,6 +32,7 @@ import java.util.Map;
 public class UserController extends BaseController {
 
     private final UserService userService;
+    private final com.vblog.mapper.UserMapper userMapper;
     private final JwtUtil jwtUtil;
     private final FileUploadUtil fileUploadUtil;
 
@@ -81,7 +82,7 @@ public class UserController extends BaseController {
     @GetMapping("/info")
     public Result<User> getCurrentUserInfo(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
-        User user = userService.getUserById(userId);
+        User user = userMapper.selectById(userId);
         return Result.success(user);
     }
 
@@ -138,8 +139,7 @@ public class UserController extends BaseController {
     @PostMapping("/avatar")
     public Result<User> uploadAvatar(
             @RequestParam("file") MultipartFile file,
-            HttpServletRequest request,
-            @Autowired FileUploadUtil fileUploadUtil) throws IOException {
+            HttpServletRequest request) throws IOException {
         Long userId = (Long) request.getAttribute("userId");
         String url = fileUploadUtil.uploadImage(file);
         User user = userService.updateAvatar(userId, url);
@@ -152,8 +152,7 @@ public class UserController extends BaseController {
     @PostMapping("/background")
     public Result<User> uploadBackground(
             @RequestParam("file") MultipartFile file,
-            HttpServletRequest request,
-            @Autowired FileUploadUtil fileUploadUtil) throws IOException {
+            HttpServletRequest request) throws IOException {
         Long userId = (Long) request.getAttribute("userId");
         String url = fileUploadUtil.uploadImage(file);
         User user = userService.updateBackground(userId, url);

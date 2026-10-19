@@ -94,7 +94,6 @@ const handleSubmit = async () => {
         user.username = form.value.username
       }
 
-      localStorage.setItem('token', token)
       userStore.setToken(token)
       userStore.setUserInfo(user)
 
@@ -171,7 +170,7 @@ const handleSubmit = async () => {
                   <el-icon class="input-icon">
                     <Lock />
                   </el-icon>
-                  <input v-model="form.password" type="password" placeholder="请输入密码" @keyup.enter="handleSubmit" />
+                  <input v-model="form.password" type="password" :placeholder="isLogin ? '请输入密码' : '至少10位，包含字母/数字/符号中的两类'" @keyup.enter="handleSubmit" />
                 </div>
               </div>
 
@@ -409,13 +408,13 @@ const handleSubmit = async () => {
 
 .form-header h2 {
   font-size: 28px;
-  color: #1a1a1a;
+  color: var(--text-main);
   margin: 0 0 8px 0;
   font-weight: 700;
 }
 
 .subtitle {
-  color: #8c8c8c;
+  color: var(--text-secondary);
   font-size: 15px;
 }
 
@@ -431,7 +430,7 @@ const handleSubmit = async () => {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #595959;
+  color: var(--text-regular);
   margin-bottom: 8px;
   margin-left: 4px;
 }

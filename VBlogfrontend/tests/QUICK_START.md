@@ -16,13 +16,13 @@
 1. 打开前端应用 http://localhost:5173
 2. 登录账号
 3. 按 F12 打开开发者工具
-4. 进入 Application 标签页 → Local Storage
+4. 进入 Application 标签页 → Session Storage
 5. 找到 `token` 项，复制其值
 
 **方法 B: 使用 API 登录获取**
 
 ```bash
-curl -X POST http://localhost:8080/user/login \
+curl -X POST http://localhost:8080/api/user/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "username=your_username&password=your_password"
 ```
@@ -38,7 +38,7 @@ curl -X POST http://localhost:8080/user/login \
 
 - **JWT Token**: 从步骤 2 获取的 Token（不含 "Bearer " 前缀）
 - **测试用户 ID**: 另一个测试用户的 ID（用于好友关系测试）
-- **API 基础 URL**: `http://localhost:8080` (默认值)
+- **API 基础 URL**: `http://localhost:8080/api` (默认值)
 
 ### 步骤 5: 运行测试
 

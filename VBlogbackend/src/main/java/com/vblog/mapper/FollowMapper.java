@@ -4,10 +4,11 @@ import com.vblog.entity.Follow;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * Follow Mapper Interface
- * 
+ *
  * @author V-Blog Team
  */
 public interface FollowMapper {
@@ -59,5 +60,13 @@ public interface FollowMapper {
      * @return affected rows
      */
     int deleteByUserIds(Long followerId, Long followeeId);
+
+    List<Long> selectFollowerIds(@Param("userId") Long userId);
+
+    List<Long> selectFollowingIds(@Param("userId") Long userId);
+
+    boolean isMutualFriend(@Param("userId") Long userId, @Param("otherUserId") Long otherUserId);
+
+    boolean existsByUsers(@Param("followerId") Long followerId, @Param("followeeId") Long followeeId);
 
 }

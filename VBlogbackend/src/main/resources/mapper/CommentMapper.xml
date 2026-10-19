@@ -9,13 +9,15 @@
         <result column="user_id" property="userId" />
         <result column="parent_id" property="parentId" />
         <result column="content" property="content" />
+        <result column="like_count" property="likeCount" />
         <result column="create_time" property="createTime" />
         <result column="update_time" property="updateTime" />
     </resultMap>
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        comment_id, post_id, user_id, parent_id, content, create_time, update_time
+        comment_id, post_id, user_id, parent_id, content, create_time, update_time,
+        (SELECT COUNT(*) FROM tb_comment_like cl WHERE cl.comment_id = tb_comment.comment_id) AS like_count
     </sql>
 
     <!-- 查询单条 -->
@@ -29,6 +31,13 @@
     <select id="selectAll" resultMap="BaseResultMap">
         select <include refid="Base_Column_List" />
         from tb_comment
+    </select>
+
+    <select id="selectByPostId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM tb_comment
+        WHERE post_id = #{postId}
+        ORDER BY create_time ASC, comment_id ASC
     </select>
 
     <!-- 根据条件查询 -->

@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../store/userStore'
-import { getUserInfo, getUserStats, updateUserInfo, getCurrentUserInfo } from '../api/user'
+import { getUserInfo, getUserStats, updateUserInfo, changePassword } from '../api/user'
 import { getUserPosts } from '../api/post'
 import { uploadImage } from '../api/file'
 import FollowButton from '../components/FollowButton.vue'
@@ -12,9 +12,9 @@ import { ElCard, ElAvatar, ElButton, ElRow, ElCol, ElStatistic, ElMessage, ElDia
 import { Edit, Upload, Lock, Location, Link as LinkIcon, Message, Iphone } from '@element-plus/icons-vue'
 
 // 导入本地图片
-import avatar1 from '../assets/Images/boy.png'
-import avatar2 from '../assets/Images/girl.png'
-import avatar3 from '../assets/Images/smilepeople.png'
+const avatar1 = '/avatars/boy.png'
+const avatar2 = '/avatars/girl.png'
+const avatar3 = '/avatars/smilepeople.png'
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
@@ -263,19 +263,16 @@ const handleSubmitPassword = async () => {
     return
   }
 
-  // TODO: 调用修改密码API（需要后端实现）
-  // passwordFormLoading.value = true
-  // try {
-  //   await changePassword(oldPassword, newPassword)
-  //   showPasswordDialog.value = false
-  //   ElMessage.success('密码修改成功')
-  // } catch (error) {
-  //   ElMessage.error('密码修改失败')
-  // } finally {
-  //   passwordFormLoading.value = false
-  // }
-
-  ElMessage.info('修改密码功能即将推出')
+  passwordFormLoading.value = true
+  try {
+    await changePassword(oldPassword, newPassword)
+    showPasswordDialog.value = false
+    ElMessage.success('密码修改成功')
+  } catch (error) {
+    ElMessage.error('密码修改失败')
+  } finally {
+    passwordFormLoading.value = false
+  }
 }
 
 // 处理帖子删除
@@ -340,7 +337,7 @@ onMounted(async () => {
               <span v-if="userInfo?.website" class="info-item">
                 <el-icon>
                   <LinkIcon />
-                </el-icon> <a :href="userInfo.website" target="_blank">{{ userInfo.website }}</a>
+                </el-icon> <a :href="/^https?:\/\//i.test(userInfo.website || '') ? userInfo.website : undefined" target="_blank" rel="noopener noreferrer">{{ userInfo.website }}</a>
               </span>
             </div>
 
@@ -388,7 +385,7 @@ onMounted(async () => {
           <el-form-item label="头像">
             <div class="avatar-selection">
               <div class="current-avatar">
-                <el-avatar :src="selectedAvatar || userInfo?.avatar || '/default-avatar.png'" :size="80" />
+                <el-avatar :src="selectedAvatar || userInfo?.avatar || '/default-avatar.jpg'" :size="80" />
                 <div class="avatar-tip">当前头像</div>
               </div>
 

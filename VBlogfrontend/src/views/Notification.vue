@@ -6,14 +6,17 @@ import { ElTabs, ElTabPane, ElAvatar, ElButton, ElEmpty, ElMessage, ElBadge } fr
 import { ChatDotRound, Star, User, Connection } from '@element-plus/icons-vue'
 import { getNotificationList, getNotificationsByType, markAsRead, markAllAsRead, markTypeAsRead, getUnreadCountByType } from '../api/notification'
 import { followUser } from '../api/follow'
+import { useRealtimeStore } from '../store/realtimeStore'
 
 const router = useRouter()
+const realtimeStore = useRealtimeStore()
 const activeTab = ref('all')
 const notifications = ref([])
 const loading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
+let listVersion = 0
 const unreadCounts = ref({
   LIKE: 0,
   COMMENT: 0,
@@ -23,6 +26,7 @@ const unreadCounts = ref({
 
 // 加载通知列表
 const loadNotifications = async () => {
+  const version = ++listVersion
   loading.value = true
   try {
     let result
@@ -36,13 +40,14 @@ const loadNotifications = async () => {
     }
 
     // 兼容多种响应格式
+    if (version !== listVersion) return
     notifications.value = result.list || result.records || result.data || (Array.isArray(result) ? result : [])
     total.value = result.total || 0
   } catch (error) {
     console.error('加载通知列表失败:', error)
     ElMessage.error('加载通知列表失败')
   } finally {
-    loading.value = false
+    if (version === listVersion) loading.value = false
   }
 }
 
@@ -98,6 +103,11 @@ watch(activeTab, () => {
   loadNotifications()
 })
 
+watch(() => realtimeStore.unreadNotifications, () => {
+  loadNotifications()
+  loadUnreadCounts()
+})
+
 // 标记通知为已读
 const handleMarkAsRead = async (notificationId) => {
   try {
@@ -109,6 +119,7 @@ const handleMarkAsRead = async (notificationId) => {
     }
     // 刷新未读数统计
     loadUnreadCounts()
+    realtimeStore.refresh()
   } catch (error) {
     console.error('标记已读失败:', error)
   }
@@ -131,6 +142,7 @@ const handleMarkAllAsRead = async () => {
     notifications.value.forEach(n => n.isRead = true)
     // 刷新未读数统计
     loadUnreadCounts()
+    realtimeStore.refresh()
   } catch (error) {
     console.error('标记全部已读失败:', error)
     ElMessage.error('操作失败')
@@ -172,7 +184,7 @@ const handleNotificationClick = async (notification) => {
   const type = notification.type?.toUpperCase()
 
   // 点赞、评论、@我的类型：跳转到帖子详情
-  if ((type === 'LIKE' || type === 'COMMENT' || type === 'MENTION') && notification.postId) {
+  if ((type === 'LIKE' || type === 'COMMENT' || type === 'MENTION') && Number(notification.postId) > 0) {
     router.push(`/post/${notification.postId}`)
   }
   // 关注类型：跳转到发送者主页
@@ -180,13 +192,23 @@ const handleNotificationClick = async (notification) => {
     router.push(`/profile/${notification.senderId}`)
   }
   // 如果有帖子ID优先跳转帖子
-  else if (notification.postId) {
+  else if (Number(notification.postId) > 0) {
     router.push(`/post/${notification.postId}`)
   }
   // 否则跳转到发送者主页
   else if (notification.senderId) {
     router.push(`/profile/${notification.senderId}`)
   }
+}
+
+// 头像和用户名始终打开发送者主页，避免冒泡到通知的帖子链接。
+const handleSenderClick = async (notification) => {
+  if (!Number.isSafeInteger(Number(notification.senderId)) || Number(notification.senderId) <= 0) {
+    ElMessage.info('该用户信息暂不可用')
+    return
+  }
+  if (!notification.isRead) await handleMarkAsRead(notification.id)
+  router.push(`/profile/${notification.senderId}`)
 }
 
 onMounted(() => {
@@ -254,10 +276,10 @@ const getIconColor = (type) => {
                     <component :is="getIcon(item.type)" />
                   </el-icon>
                 </div>
-                <el-avatar :src="item.senderAvatar || '/default-avatar.png'" :size="48" class="user-avatar" />
+                <el-avatar :src="item.senderAvatar || '/default-avatar.jpg'" :size="48" class="user-avatar" @click.stop="handleSenderClick(item)" />
                 <div class="content-wrapper">
                   <div class="top-row">
-                    <span class="username">{{ item.senderUsername || '用户' }}</span>
+                    <span class="username" role="link" tabindex="0" @click.stop="handleSenderClick(item)" @keydown.enter.stop="handleSenderClick(item)">{{ item.senderUsername || '用户' }}</span>
                     <span class="time">{{ formatTime(item.createTime) }}</span>
                   </div>
                   <p class="content-text">{{ item.content }}</p>
@@ -288,10 +310,10 @@ const getIconColor = (type) => {
                     <component :is="getIcon(item.type)" />
                   </el-icon>
                 </div>
-                <el-avatar :src="item.senderAvatar || '/default-avatar.png'" :size="48" class="user-avatar" />
+                <el-avatar :src="item.senderAvatar || '/default-avatar.jpg'" :size="48" class="user-avatar" @click.stop="handleSenderClick(item)" />
                 <div class="content-wrapper">
                   <div class="top-row">
-                    <span class="username">{{ item.senderUsername || '用户' }}</span>
+                    <span class="username" role="link" tabindex="0" @click.stop="handleSenderClick(item)" @keydown.enter.stop="handleSenderClick(item)">{{ item.senderUsername || '用户' }}</span>
                     <span class="time">{{ formatTime(item.createTime) }}</span>
                   </div>
                   <p class="content-text">{{ item.content }}</p>
@@ -318,10 +340,10 @@ const getIconColor = (type) => {
                     <component :is="getIcon(item.type)" />
                   </el-icon>
                 </div>
-                <el-avatar :src="item.senderAvatar || '/default-avatar.png'" :size="48" class="user-avatar" />
+                <el-avatar :src="item.senderAvatar || '/default-avatar.jpg'" :size="48" class="user-avatar" @click.stop="handleSenderClick(item)" />
                 <div class="content-wrapper">
                   <div class="top-row">
-                    <span class="username">{{ item.senderUsername || '用户' }}</span>
+                    <span class="username" role="link" tabindex="0" @click.stop="handleSenderClick(item)" @keydown.enter.stop="handleSenderClick(item)">{{ item.senderUsername || '用户' }}</span>
                     <span class="time">{{ formatTime(item.createTime) }}</span>
                   </div>
                   <p class="content-text">{{ item.content }}</p>
@@ -348,10 +370,10 @@ const getIconColor = (type) => {
                     <component :is="getIcon(item.type)" />
                   </el-icon>
                 </div>
-                <el-avatar :src="item.senderAvatar || '/default-avatar.png'" :size="48" class="user-avatar" />
+                <el-avatar :src="item.senderAvatar || '/default-avatar.jpg'" :size="48" class="user-avatar" @click.stop="handleSenderClick(item)" />
                 <div class="content-wrapper">
                   <div class="top-row">
-                    <span class="username">{{ item.senderUsername || '用户' }}</span>
+                    <span class="username" role="link" tabindex="0" @click.stop="handleSenderClick(item)" @keydown.enter.stop="handleSenderClick(item)">{{ item.senderUsername || '用户' }}</span>
                     <span class="time">{{ formatTime(item.createTime) }}</span>
                   </div>
                   <p class="content-text">{{ item.content }}</p>
@@ -378,10 +400,10 @@ const getIconColor = (type) => {
                     <component :is="getIcon(item.type)" />
                   </el-icon>
                 </div>
-                <el-avatar :src="item.senderAvatar || '/default-avatar.png'" :size="48" class="user-avatar" />
+                <el-avatar :src="item.senderAvatar || '/default-avatar.jpg'" :size="48" class="user-avatar" @click.stop="handleSenderClick(item)" />
                 <div class="content-wrapper">
                   <div class="top-row">
-                    <span class="username">{{ item.senderUsername || '用户' }}</span>
+                    <span class="username" role="link" tabindex="0" @click.stop="handleSenderClick(item)" @keydown.enter.stop="handleSenderClick(item)">{{ item.senderUsername || '用户' }}</span>
                     <span class="time">{{ formatTime(item.createTime) }}</span>
                   </div>
                   <p class="content-text">{{ item.content }}</p>

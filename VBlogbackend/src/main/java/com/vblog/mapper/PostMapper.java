@@ -1,16 +1,25 @@
 package com.vblog.mapper;
 
 import com.vblog.entity.Post;
+import com.vblog.entity.PostInteractionStatus;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * Post Mapper Interface
- * 
+ *
  * @author V-Blog Team
  */
 public interface PostMapper {
+    long countAllPosts();
+    long countByUserId(@Param("userId") Long userId);
+    List<Post> selectPage(@Param("offset") long offset, @Param("size") int size);
+    List<Post> selectUserPage(@Param("userId") Long userId, @Param("offset") long offset,
+                              @Param("size") int size);
+    List<PostInteractionStatus> selectInteractionStatuses(@Param("userId") Long userId,
+                                                           @Param("postIds") List<Long> postIds);
 
     /**
      * Select by id

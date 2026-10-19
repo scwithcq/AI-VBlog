@@ -1,0 +1,156 @@
+/* Keep our palette above component CSS loaded when a route is opened. */
+html:root {
+  color-scheme: dark;
+  --primary-color: #ff7964;
+  --primary-gradient: linear-gradient(135deg, #ff9272 0%, #ff625e 100%);
+  --secondary-color: #a99af7;
+  --secondary-gradient: linear-gradient(135deg, #9188ee 0%, #b49dfb 100%);
+  --success-color: #5ecba7;
+  --warning-color: #ffc47a;
+  --danger-color: #ff667f;
+  --info-color: #9aa7bf;
+  --text-main: #f6f7fc;
+  --text-regular: #dce2f0;
+  --text-secondary: #a9b3c8;
+  --app-bg: #0e121e;
+  --glass-bg: rgba(20, 26, 41, 0.93);
+  --glass-card-bg: rgba(28, 35, 53, 0.94);
+  --glass-hover-bg: rgba(35, 43, 62, 0.98);
+  --glass-border: rgba(164, 180, 215, 0.13);
+  --glass-shadow: 0 18px 48px rgba(2, 6, 18, 0.28);
+  --glass-blur: 18px;
+  --border-radius-md: 14px;
+  --border-radius-lg: 20px;
+  --border-radius-xl: 26px;
+
+  --el-color-primary: #ff7964;
+  --el-color-primary-light-3: #ff9b87;
+  --el-color-primary-light-5: #ffb6a7;
+  --el-color-primary-light-7: #ffd1c8;
+  --el-color-primary-light-8: #ffe0da;
+  --el-color-primary-light-9: #fff0ec;
+  --el-color-primary-dark-2: #e86252;
+  --el-bg-color: #1c2335;
+  --el-bg-color-overlay: #242d42;
+  --el-fill-color-blank: #1c2335;
+  --el-fill-color-light: #293249;
+  --el-fill-color: #303a52;
+  --el-border-color: #3c4962;
+  --el-border-color-light: #343f56;
+  --el-text-color-primary: #f6f7fc;
+  --el-text-color-regular: #dce2f0;
+  --el-text-color-secondary: #a9b3c8;
+  --el-mask-color: rgba(4, 8, 18, 0.72);
+}
+
+body {
+  color: var(--text-main);
+  background-color: var(--app-bg);
+  background-image:
+    radial-gradient(circle at 8% 0%, rgba(133, 73, 107, 0.22), transparent 28%),
+    radial-gradient(circle at 90% 6%, rgba(79, 82, 152, 0.2), transparent 30%),
+    linear-gradient(180deg, #111725 0%, #0e121e 54%, #101522 100%);
+}
+
+.glass-card,
+.glass,
+.card {
+  border: 1px solid var(--glass-border);
+  background: var(--glass-card-bg);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-card:hover {
+  background: var(--glass-hover-bg);
+  box-shadow: 0 22px 52px rgba(2, 6, 18, 0.34);
+  transform: translateY(-1px);
+}
+
+/* Pair card surfaces and foregrounds so the default light card cannot
+   inherit the application's light text. Covers lists, search and topics. */
+body .el-card {
+  --el-card-bg-color: var(--glass-card-bg);
+  --el-card-border-color: var(--glass-border);
+  background-color: var(--el-card-bg-color);
+  border-color: var(--el-card-border-color);
+  color: var(--text-main);
+}
+
+body .el-card__header {
+  border-bottom-color: var(--glass-border);
+}
+
+.el-button--primary {
+  background: var(--primary-gradient) !important;
+  box-shadow: 0 8px 20px rgba(255, 104, 93, 0.2);
+}
+
+.el-button--primary:hover {
+  box-shadow: 0 10px 24px rgba(255, 104, 93, 0.29);
+}
+
+.el-input__wrapper,
+.el-textarea__inner {
+  background: #242d40 !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text-main) !important;
+}
+
+.el-input__inner,
+.el-textarea__inner {
+  color: var(--text-main) !important;
+}
+
+.el-input__inner::placeholder,
+.el-textarea__inner::placeholder {
+  color: #98a5ba !important;
+}
+
+.el-input__wrapper:hover,
+.el-textarea__inner:hover {
+  background: #29344a !important;
+  border-color: rgba(255, 121, 100, 0.32) !important;
+}
+
+.el-input__wrapper.is-focus,
+.el-textarea__inner:focus {
+  background: #29344a !important;
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 2px rgba(255, 121, 100, 0.18) !important;
+}
+
+a:hover { color: #ffb4a0; }
+
+.el-message-box,
+.el-dialog,
+.el-drawer {
+  background: var(--el-bg-color-overlay);
+  color: var(--text-main);
+}
+
+.el-dropdown-menu,
+.el-dialog,
+.el-popper {
+  color: var(--text-main);
+}
+
+button:focus-visible,
+a:focus-visible,
+.menu-item:focus-visible,
+.action-item:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 3px;
+}
+
+::selection {
+  color: #fff;
+  background: rgba(255, 121, 100, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

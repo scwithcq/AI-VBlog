@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * Interceptor Configuration
  * Register JWT interceptor and configure excluded paths
- * 
+ *
  * @author V-Blog Team
  */
 @Configuration
@@ -26,9 +26,7 @@ public class InterceptorConfig implements WebMvcConfigurer {
     private static final List<String> EXCLUDE_PATHS = Arrays.asList(
             "/user/register",
             "/user/login",
-            "/uploads/**",
-            "/file/upload/image",
-            "/file/upload/video"
+            "/uploads/**"
     );
 
     @Override
@@ -38,4 +36,3 @@ public class InterceptorConfig implements WebMvcConfigurer {
                 .excludePathPatterns(EXCLUDE_PATHS);
     }
 }
-

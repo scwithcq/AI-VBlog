@@ -10,6 +10,7 @@ import com.vblog.mapper.FriendshipMapper;
 import com.vblog.mapper.UserMapper;
 import com.vblog.service.FriendshipService;
 import com.vblog.service.NotificationService;
+import com.vblog.websocket.MessageWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,7 +21,7 @@ import java.util.List;
 
 /**
  * 好友服务实现类
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -32,6 +33,7 @@ public class FriendshipServiceImpl implements FriendshipService {
   private final FriendRequestMapper friendRequestMapper;
   private final UserMapper userMapper;
   private final NotificationService notificationService;
+  private final MessageWebSocketHandler webSocketHandler;
 
   private static final int MAX_FRIEND_COUNT = 1000;
 
@@ -42,7 +44,9 @@ public class FriendshipServiceImpl implements FriendshipService {
     }
 
     // 搜索用户名或昵称匹配的用户，排除当前用户
-    return userMapper.searchUsers(keyword.trim(), currentUserId);
+    List<User> users = userMapper.searchUsers(keyword.trim(), currentUserId);
+    users = users.stream().map(com.vblog.utils.InputSafety::publicUser).toList();
+    return users;
   }
 
   @Override
@@ -84,6 +88,7 @@ public class FriendshipServiceImpl implements FriendshipService {
     request.setStatus(0);
 
     friendRequestMapper.insert(request);
+    webSocketHandler.sendEventAfterCommit(toUserId, "friend_request", request);
 
     // 暂时禁用通知功能，等好友功能测试通过后再启用
     // try {
@@ -148,6 +153,8 @@ public class FriendshipServiceImpl implements FriendshipService {
       friendships.add(friendship2);
 
       friendshipMapper.insertBatch(friendships);
+      webSocketHandler.sendEventAfterCommit(request.getFromUserId(), "friend_accepted", request);
+      webSocketHandler.sendEventAfterCommit(request.getToUserId(), "friend_accepted", request);
 
       // 暂时禁用通知功能，等好友功能测试通过后再启用
       // try {
@@ -188,7 +195,9 @@ public class FriendshipServiceImpl implements FriendshipService {
     // 使用QueryWrapper批量查询好友信息
     QueryWrapper<User> wrapper = new QueryWrapper<>();
     wrapper.in("user_id", friendIds);
-    return userMapper.selectList(wrapper);
+    List<User> friends = userMapper.selectList(wrapper);
+    friends = friends.stream().map(com.vblog.utils.InputSafety::publicUser).toList();
+    return friends;
   }
 
   @Override

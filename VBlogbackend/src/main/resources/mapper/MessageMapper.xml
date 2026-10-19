@@ -22,7 +22,6 @@
         SELECT *
         FROM tb_message
         WHERE conversation_id = #{conversationId}
-          AND status != 2
           AND (
               (from_user_id = #{userId} AND is_deleted_by_sender = 0)
               OR (to_user_id = #{userId} AND is_deleted_by_receiver = 0)

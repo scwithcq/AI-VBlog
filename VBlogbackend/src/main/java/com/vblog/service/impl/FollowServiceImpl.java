@@ -14,14 +14,12 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
  * 关注服务实现类
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -57,16 +55,8 @@ public class FollowServiceImpl implements FollowService {
         if (followerId.equals(followeeId)) {
             throw new RuntimeException("不能关注自己");
         }
-
-        // 检查是否已经关注
-        Map<String, Object> queryMap = new HashMap<>();
-        queryMap.put("follower_id", followerId);
-        queryMap.put("followee_id", followeeId);
-        List<Follow> existingList = followMapper.selectByMap(queryMap);
-
-        if (!existingList.isEmpty()) {
-            log.debug("用户 {} 已经关注了用户 {}", followerId, followeeId);
-            return false; // 已经关注
+        if (isFollowing(followerId, followeeId)) {
+            return false;
         }
 
         // 创建新的关注关系
@@ -92,6 +82,9 @@ public class FollowServiceImpl implements FollowService {
     @Override
     @Transactional
     public boolean unfollowUser(Long followerId, Long followeeId) {
+        if (isMutualFriend(followerId, followeeId)) {
+            return false;
+        }
         // 删除关注关系
         int result = followMapper.deleteByUserIds(followerId, followeeId);
 
@@ -106,48 +99,49 @@ public class FollowServiceImpl implements FollowService {
 
     @Override
     public boolean isFollowing(Long followerId, Long followeeId) {
-        Map<String, Object> queryMap = new HashMap<>();
-        queryMap.put("follower_id", followerId);
-        queryMap.put("followee_id", followeeId);
-        List<Follow> existingList = followMapper.selectByMap(queryMap);
-        return !existingList.isEmpty();
+        if (isMutualFriend(followerId, followeeId)) {
+            return true;
+        }
+        return followMapper.existsByUsers(followerId, followeeId);
+    }
+
+    @Override
+    public boolean isMutualFriend(Long userId, Long otherUserId) {
+        return followMapper.isMutualFriend(userId, otherUserId);
     }
 
     @Override
     public Long getFollowerCount(Long userId) {
-        Map<String, Object> queryMap = new HashMap<>();
-        queryMap.put("followee_id", userId);
-        List<Follow> followerList = followMapper.selectByMap(queryMap);
-        return (long) followerList.size();
+        return (long) followMapper.selectFollowerIds(userId).size();
     }
 
     @Override
     public Long getFollowingCount(Long userId) {
-        Map<String, Object> queryMap = new HashMap<>();
-        queryMap.put("follower_id", userId);
-        List<Follow> followingList = followMapper.selectByMap(queryMap);
-        return (long) followingList.size();
+        return (long) followMapper.selectFollowingIds(userId).size();
     }
 
     @Override
     public Page<User> getFollowers(Long userId, int page, int size) {
         // 获取粉丝ID列表
-        Map<String, Object> queryMap = new HashMap<>();
-        queryMap.put("followee_id", userId);
-        List<Follow> followerList = followMapper.selectByMap(queryMap);
+        List<Long> followerIds = followMapper.selectFollowerIds(userId);
 
         // 计算总数和分页
-        long total = followerList.size();
+        long total = followerIds.size();
         int offset = (page - 1) * size;
-        int end = Math.min(offset + size, followerList.size());
+        int end = Math.min(offset + size, followerIds.size());
+
+        if (offset >= end) {
+            return new Page<>(page, size, total, List.of());
+        }
 
         // 获取分页后的粉丝列表
-        List<Follow> paginatedFollowers = followerList.subList(offset, end);
+        List<Long> paginatedFollowers = followerIds.subList(offset, end);
 
         // 获取每个粉丝的用户信息
         List<User> userList = paginatedFollowers.stream()
-                .map(follow -> userMapper.selectById(follow.getFollowerId()))
+                .map(userMapper::selectById)
                 .filter(user -> user != null)
+                .map(com.vblog.utils.InputSafety::publicUser)
                 .collect(Collectors.toList());
 
         // 创建并返回Page对象
@@ -157,22 +151,25 @@ public class FollowServiceImpl implements FollowService {
     @Override
     public Page<User> getFollowing(Long userId, int page, int size) {
         // 获取关注的用户ID列表
-        Map<String, Object> queryMap = new HashMap<>();
-        queryMap.put("follower_id", userId);
-        List<Follow> followingList = followMapper.selectByMap(queryMap);
+        List<Long> followingIds = followMapper.selectFollowingIds(userId);
 
         // 计算总数和分页
-        long total = followingList.size();
+        long total = followingIds.size();
         int offset = (page - 1) * size;
-        int end = Math.min(offset + size, followingList.size());
+        int end = Math.min(offset + size, followingIds.size());
+
+        if (offset >= end) {
+            return new Page<>(page, size, total, List.of());
+        }
 
         // 获取分页后的关注用户列表
-        List<Follow> paginatedFollowing = followingList.subList(offset, end);
+        List<Long> paginatedFollowing = followingIds.subList(offset, end);
 
         // 获取每个关注用户的信息
         List<User> userList = paginatedFollowing.stream()
-                .map(follow -> userMapper.selectById(follow.getFolloweeId()))
+                .map(userMapper::selectById)
                 .filter(user -> user != null)
+                .map(com.vblog.utils.InputSafety::publicUser)
                 .collect(Collectors.toList());
 
         // 创建并返回Page对象

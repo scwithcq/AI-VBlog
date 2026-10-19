@@ -12,13 +12,10 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 帖子点赞服务实现类
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -48,6 +45,9 @@ public class PostLikeServiceImpl implements PostLikeService {
     @Override
     @Transactional
     public boolean likePost(Long userId, Long postId) {
+        if (!postService.postExists(postId)) {
+            throw new IllegalArgumentException("帖子不存在");
+        }
         // 检查是否已点赞
         PostLike existing = postLikeMapper.selectByUserAndPostId(postId, userId);
 
@@ -60,7 +60,7 @@ public class PostLikeServiceImpl implements PostLikeService {
         PostLike postLike = new PostLike();
         postLike.setUserId(userId);
         postLike.setPostId(postId);
-        postLikeMapper.insert(postLike);
+        if (postLikeMapper.insert(postLike) == 0) return false;
         log.info("Post liked: postId={}, userId={}", postId, userId);
 
         // 创建系统互动通知
@@ -99,9 +99,6 @@ public class PostLikeServiceImpl implements PostLikeService {
 
     @Override
     public Long getLikeCount(Long postId) {
-        Map<String, Object> queryMap = new HashMap<>();
-        queryMap.put("post_id", postId);
-        List<PostLike> likeList = postLikeMapper.selectByMap(queryMap);
-        return (long) likeList.size();
+        return postLikeMapper.countByPostId(postId);
     }
 }

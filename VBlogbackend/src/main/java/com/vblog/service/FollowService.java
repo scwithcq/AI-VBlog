@@ -7,14 +7,14 @@ import java.util.List;
 
 /**
  * Follow Service Interface
- * 
+ *
  * @author V-Blog Team
  */
 public interface FollowService {
 
     /**
      * Follow a user
-     * 
+     *
      * @param followerId Follower ID (current user)
      * @param followeeId Followee ID (user to follow)
      * @return true if followed, false if already following
@@ -23,7 +23,7 @@ public interface FollowService {
 
     /**
      * Unfollow a user
-     * 
+     *
      * @param followerId Follower ID (current user)
      * @param followeeId Followee ID (user to unfollow)
      * @return true if unfollowed, false if not following
@@ -32,16 +32,18 @@ public interface FollowService {
 
     /**
      * Check if user is following another user
-     * 
+     *
      * @param followerId Follower ID
      * @param followeeId Followee ID
      * @return true if following, false otherwise
      */
     boolean isFollowing(Long followerId, Long followeeId);
 
+    boolean isMutualFriend(Long userId, Long otherUserId);
+
     /**
      * Get follower count for a user
-     * 
+     *
      * @param userId User ID
      * @return Follower count
      */
@@ -49,7 +51,7 @@ public interface FollowService {
 
     /**
      * Get following count for a user
-     * 
+     *
      * @param userId User ID
      * @return Following count
      */
@@ -57,7 +59,7 @@ public interface FollowService {
 
     /**
      * Get followers list (paginated)
-     * 
+     *
      * @param userId User ID
      * @param page Page number
      * @param size Page size
@@ -67,7 +69,7 @@ public interface FollowService {
 
     /**
      * Get following list (paginated)
-     * 
+     *
      * @param userId User ID
      * @param page Page number
      * @param size Page size
@@ -75,5 +77,3 @@ public interface FollowService {
      */
     Page<User> getFollowing(Long userId, int page, int size);
 }
-
-

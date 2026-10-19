@@ -20,7 +20,7 @@ import java.util.List;
 
 /**
  * 话题控制器
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -38,7 +38,7 @@ public class TopicController extends BaseController {
      */
     @GetMapping("/hot")
     public Result<List<Topic>> getHotTopics(
-            @RequestParam(defaultValue = "10") @Min(1) int limit) {
+            @RequestParam(defaultValue = "10") @Min(1) @jakarta.validation.constraints.Max(100) int limit) {
 
         List<Topic> hotTopics = topicService.getHotTopics(limit);
         return Result.success(hotTopics);
@@ -63,8 +63,8 @@ public class TopicController extends BaseController {
     @GetMapping("/name/{name}/posts")
     public Result<Page<Post>> getPostsByTopicName(
             @PathVariable String name,
-            @RequestParam(defaultValue = "1") @Min(1) int page,
-            @RequestParam(defaultValue = "10") @Min(1) int size) {
+            @RequestParam(defaultValue = "1") @Min(1) @jakarta.validation.constraints.Max(100000) int page,
+            @RequestParam(defaultValue = "10") @Min(1) @jakarta.validation.constraints.Max(100) int size) {
 
         // 先获取话题信息，确保话题存在
         Topic topic = topicService.getTopicByName(name);
@@ -72,9 +72,7 @@ public class TopicController extends BaseController {
             return Result.error(404, "话题未找到");
         }
 
-        // 目前PostService只支持根据话题ID获取帖子，这里暂时返回空列表
-        // 后续需要修改PostService，支持根据话题名称获取帖子
-        Page<Post> postPage = new Page<>(page, size, 0L, List.of());
+        Page<Post> postPage = postService.getPostsByTopicId(topic.getTopicId(), page, size);
         return Result.success(postPage);
     }
 }

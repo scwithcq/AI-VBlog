@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../store/userStore'
 import { useAppStore } from '../store/appStore'
+import { useRealtimeStore } from '../store/realtimeStore'
+import { HomeFilled, Message, Bell, User } from '@element-plus/icons-vue'
 import Header from './Header.vue'
 import Sidebar from './Sidebar.vue'
 import HotTopics from './HotTopics.vue'
@@ -11,6 +13,15 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const appStore = useAppStore()
+const realtimeStore = useRealtimeStore()
+const mobileNav = [
+  { key: 'home', label: '首页', icon: HomeFilled, path: '/' },
+  { key: 'message', label: '消息', icon: Message, path: '/message' },
+  { key: 'notification', label: '通知', icon: Bell, path: '/notification' },
+  { key: 'profile', label: '我的', icon: User, path: '/profile' }
+]
+const mobilePath = (item) => item.key === 'profile' ? `/profile/${userStore.userId}` : item.path
+const mobileActive = (item) => item.key === 'home' ? route.path === '/' : route.path.startsWith(mobilePath(item))
 
 // 深色模式状态
 const isDarkMode = ref(false)
@@ -94,6 +105,16 @@ defineExpose({ toggleDarkMode, isDarkMode })
     <div v-else class="auth-page">
       <router-view />
     </div>
+    <nav v-if="!isAuthPage" class="mobile-nav" aria-label="移动端主导航">
+      <button v-for="item in mobileNav" :key="item.key" type="button" class="mobile-nav-item"
+        :class="{ active: mobileActive(item) }" :aria-current="mobileActive(item) ? 'page' : undefined"
+        @click="router.push(mobilePath(item))">
+        <el-icon :size="21"><component :is="item.icon" /></el-icon>
+        <span>{{ item.label }}</span>
+        <i v-if="item.key === 'message' && realtimeStore.unreadMessages > 0" class="mobile-unread"></i>
+        <i v-if="item.key === 'notification' && realtimeStore.unreadNotifications > 0" class="mobile-unread"></i>
+      </button>
+    </nav>
   </div>
 </template>
 
@@ -106,23 +127,23 @@ defineExpose({ toggleDarkMode, isDarkMode })
 /* 主要内容区域 */
 .layout-content {
   width: 100%;
-  padding: 20px 0;
+  padding: 25px 0 50px;
   background: transparent;
 }
 
 .content-wrapper {
-  max-width: 1280px;
+  max-width: 1380px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 280px 1fr 320px;
-  gap: 20px;
+  grid-template-columns: 240px minmax(0, 1fr) 300px;
+  gap: 24px;
   padding: 0 20px;
 }
 
 /* 左侧边栏 */
 .sidebar-left {
   position: sticky;
-  top: 80px;
+  top: 94px;
   height: fit-content;
   min-height: calc(100vh - 100px);
 }
@@ -140,12 +161,14 @@ defineExpose({ toggleDarkMode, isDarkMode })
 /* 右侧信息栏 */
 .sidebar-right {
   position: sticky;
-  top: 80px;
+  top: 94px;
   height: fit-content;
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
+
+.mobile-nav { display: none; }
 
 /* 页脚信息 */
 .sidebar-footer {
@@ -196,7 +219,7 @@ defineExpose({ toggleDarkMode, isDarkMode })
 /* 响应式设计 */
 @media (max-width: 1200px) {
   .content-wrapper {
-    grid-template-columns: 240px 1fr 280px;
+    grid-template-columns: 210px minmax(0, 1fr) 270px;
     gap: 16px;
   }
 }
@@ -212,6 +235,7 @@ defineExpose({ toggleDarkMode, isDarkMode })
 }
 
 @media (max-width: 768px) {
+  .layout-content { padding: 16px 0 96px; }
   .content-wrapper {
     grid-template-columns: 1fr;
     padding: 0 12px;
@@ -220,5 +244,34 @@ defineExpose({ toggleDarkMode, isDarkMode })
   .sidebar-left {
     display: none;
   }
+
+  .mobile-nav {
+    position: fixed;
+    z-index: 1001;
+    inset: auto 0 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+    background: rgba(18, 24, 39, .96);
+    border-top: 1px solid var(--glass-border);
+    box-shadow: 0 -12px 35px rgba(4, 8, 18, .28);
+    backdrop-filter: blur(20px);
+  }
+  .mobile-nav-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-height: 49px;
+    padding: 5px;
+    background: transparent;
+    border: 0;
+    color: var(--text-secondary);
+    font-size: 10px;
+  }
+  .mobile-nav-item.active { color: #ffaf93; background: rgba(255, 121, 100, .1); }
+  .mobile-unread { position: absolute; top: 4px; right: calc(50% - 17px); width: 7px; height: 7px; border-radius: 50%; background: #ff667f; }
 }
 </style>

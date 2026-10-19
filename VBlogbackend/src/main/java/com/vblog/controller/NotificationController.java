@@ -30,8 +30,8 @@ public class NotificationController extends BaseController {
      */
     @GetMapping("/list")
     public Result<Page<Notification>> getNotificationList(
-            @RequestParam(defaultValue = "1") @Min(1) int page,
-            @RequestParam(defaultValue = "10") @Min(1) int size,
+            @RequestParam(defaultValue = "1") @Min(1) @jakarta.validation.constraints.Max(100000) int page,
+            @RequestParam(defaultValue = "10") @Min(1) @jakarta.validation.constraints.Max(100) int size,
             HttpServletRequest request) {
 
         Long userId = (Long) request.getAttribute("userId");

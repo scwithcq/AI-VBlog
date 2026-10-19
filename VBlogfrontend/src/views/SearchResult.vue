@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { searchUsers, searchPosts, getSearchHistory, addSearchHistory, clearSearchHistory, getHotKeywords } from '../api/search'
+import { searchUsers, searchPosts, getSearchHistory, addSearchHistory, clearSearchHistory, getHotSearchTopics } from '../api/search'
 import { getUserInfo } from '../api/user'
 import PostCard from '../components/PostCard.vue'
 import Layout from '../components/Layout.vue'
@@ -111,8 +111,8 @@ const loadSearchHistoryAndHotKeywords = async () => {
     const history = await getSearchHistory()
     searchHistory.value = history
 
-    const hotData = await getHotKeywords()
-    hotKeywords.value = hotData?.list || []
+    const hotData = await getHotSearchTopics()
+    hotKeywords.value = (Array.isArray(hotData) ? hotData : hotData?.list || []).map(topic => topic.name || topic)
   } catch (error) {
     console.error('加载搜索历史或热搜词失败:', error)
   }

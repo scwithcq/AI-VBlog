@@ -12,11 +12,23 @@ import java.util.Date;
 
 /**
  * JWT Utility Class
- * 
+ *
  * @author V-Blog Team
  */
 @Component
 public class JwtUtil {
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.vblog.mapper.UserMapper users;
+
+    private String passwordVersion(Long id) {
+        var user = users.selectById(id);
+        if (user == null || user.getUsername().startsWith("demo_")) throw new IllegalArgumentException("用户不可用");
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(user.getPassword().getBytes(StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
+    }
 
     @Value("${jwt.secret}")
     private String secret;
@@ -26,7 +38,7 @@ public class JwtUtil {
 
     /**
      * Generate JWT token
-     * 
+     *
      * @param userId User ID
      * @param username Username
      * @return JWT token string
@@ -40,6 +52,8 @@ public class JwtUtil {
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("username", username)
+                .claim("pwv", passwordVersion(userId))
+                .issuer("vblog")
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(key)
@@ -48,7 +62,7 @@ public class JwtUtil {
 
     /**
      * Get user ID from token
-     * 
+     *
      * @param token JWT token
      * @return User ID
      */
@@ -59,7 +73,7 @@ public class JwtUtil {
 
     /**
      * Get username from token
-     * 
+     *
      * @param token JWT token
      * @return Username
      */
@@ -70,14 +84,16 @@ public class JwtUtil {
 
     /**
      * Validate token
-     * 
+     *
      * @param token JWT token
      * @return true if valid, false otherwise
      */
     public boolean validateToken(String token) {
         try {
             Claims claims = getClaimsFromToken(token);
-            return !claims.getExpiration().before(new Date());
+            return !claims.getExpiration().before(new Date())
+                    && "vblog".equals(claims.getIssuer())
+                    && passwordVersion(Long.parseLong(claims.getSubject())).equals(claims.get("pwv", String.class));
         } catch (Exception e) {
             return false;
         }
@@ -85,7 +101,7 @@ public class JwtUtil {
 
     /**
      * Get claims from token
-     * 
+     *
      * @param token JWT token
      * @return Claims
      */
@@ -98,4 +114,3 @@ public class JwtUtil {
                 .getPayload();
     }
 }
-

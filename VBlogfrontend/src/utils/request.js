@@ -1,3 +1,4 @@
+import { normalizeMediaFields } from './image'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
@@ -22,8 +23,8 @@ const service = axios.create({
 // 请求拦截器 (自动携带 Token 和参数验证)
 service.interceptors.request.use(
   config => {
-    // 1. 从 localStorage 获取并添加 Token
-    const token = localStorage.getItem('token')
+    // 1. 从当前标签页获取 Token
+    const token = sessionStorage.getItem('token')
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
     }
@@ -41,11 +42,8 @@ service.interceptors.request.use(
     }
 
     // 3. 调试日志：打印请求信息
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Request] ${config.method?.toUpperCase()} ${config.url}`, {
-        data: config.data,
-        headers: config.headers
-      })
+    if (import.meta.env.DEV) {
+      console.log(`[Request] ${config.method?.toUpperCase()} ${config.url}`)
     }
 
     return config
@@ -58,7 +56,7 @@ service.interceptors.request.use(
 // 响应拦截器 (统一处理错误和数据格式)
 service.interceptors.response.use(
   response => {
-    const res = response.data
+    const res = normalizeMediaFields(response.data)
 
     // 检查响应中是否包含 code 字段（后端 Result 结构）
     // 注意：后端的成功状态码是 0（不是 200）
@@ -66,7 +64,7 @@ service.interceptors.response.use(
       // 成功状态码为 0 或 200
       if (res.code === 0 || res.code === 200) {
         // 调试日志
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV) {
           console.log(`[Response] Success (code: ${res.code})`, {
             fullResponse: res,
             data: res.data
@@ -76,8 +74,8 @@ service.interceptors.response.use(
         return res.data !== undefined ? res.data : res
       } else if (res.code === 401) {
         // 401：Token 无效或已过期
-        localStorage.removeItem('token')
-        localStorage.removeItem('userInfo')
+        sessionStorage.removeItem('token')
+        sessionStorage.removeItem('userInfo')
         ElMessage.error('登录已过期，请重新登录')
         // 延迟跳转，避免被其他请求覆盖
         setTimeout(() => {
@@ -121,8 +119,8 @@ service.interceptors.response.use(
 
       // 特殊处理 401 和 403
       if (status === 401) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('userInfo')
+        sessionStorage.removeItem('token')
+        sessionStorage.removeItem('userInfo')
         errorMessage = '登录已过期，请重新登录'
         setTimeout(() => {
           window.location.href = '/login'

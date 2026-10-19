@@ -43,7 +43,7 @@
 
     <!-- 新增 -->
     <insert id="insert" useGeneratedKeys="true" keyProperty="likeId">
-        insert into tb_post_like(post_id, user_id)
+        insert ignore into tb_post_like(post_id, user_id)
         values(#{postId}, #{userId})
     </insert>
 
@@ -64,6 +64,10 @@
         select <include refid="Base_Column_List" />
         from tb_post_like
         where post_id = #{postId} and user_id = #{userId}
+    </select>
+
+    <select id="countByPostId" resultType="java.lang.Long">
+        select count(*) from tb_post_like where post_id = #{postId}
     </select>
 
 </mapper>

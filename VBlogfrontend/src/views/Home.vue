@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue'
 import { useUserStore } from '../store/userStore'
+import { useUserStatsStore } from '../store/userStatsStore'
 import { getPostList } from '../api/post'
 import { getUserInfo } from '../api/user'
 import PostEditor from '../components/PostEditor.vue'
@@ -10,6 +11,8 @@ import HotTopics from '../components/HotTopics.vue'
 import { ElCard, ElEmpty, ElPagination, ElTabs, ElTabPane } from 'element-plus'
 
 const userStore = useUserStore()
+const statsStore = useUserStatsStore()
+const todayLabel = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }).format(new Date())
 
 const posts = ref([])
 const users = ref({}) // Cache user info
@@ -106,10 +109,12 @@ const handleFeedTypeChange = (newType) => {
 const handlePostPublished = () => {
   page.value = 1 // 返回第一页
   loadPosts(false)
+  statsStore.refresh()
 }
 
 const handlePostReposted = () => {
   loadPosts(false)
+  statsStore.refresh()
 }
 
 const handlePostCommented = () => {
@@ -123,10 +128,12 @@ const handlePostLiked = () => {
 const handlePostDeleted = (postId) => {
   // 从列表中移除已删除的帖子
   posts.value = posts.value.filter(post => post.postId !== postId)
+  statsStore.refresh()
 }
 
 onMounted(() => {
   loadPosts(false)
+  statsStore.refresh()
   nextTick(() => {
     setupIntersectionObserver()
   })
@@ -144,18 +151,18 @@ onMounted(() => {
             <div class="username-right">{{ userStore.userInfo?.username }}</div>
             <div class="bio-right" v-if="userStore.userInfo?.bio">{{ userStore.userInfo.bio }}</div>
             <div class="stats-right">
-              <div class="stat-item">
-                <span class="stat-num">0</span>
+              <router-link class="stat-item" :to="`/following/${userStore.userId}`" aria-label="查看我的关注">
+                <span class="stat-num">{{ statsStore.stats.followingCount }}</span>
                 <span class="stat-label">关注</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-num">0</span>
+              </router-link>
+              <router-link class="stat-item" :to="`/followers/${userStore.userId}`" aria-label="查看我的粉丝">
+                <span class="stat-num">{{ statsStore.stats.followerCount }}</span>
                 <span class="stat-label">粉丝</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-num">0</span>
+              </router-link>
+              <router-link class="stat-item" :to="`/profile/${userStore.userId}`" aria-label="查看我的微博">
+                <span class="stat-num">{{ statsStore.stats.postCount }}</span>
                 <span class="stat-label">微博</span>
-              </div>
+              </router-link>
             </div>
           </div>
         </div>
@@ -165,17 +172,22 @@ onMounted(() => {
     </template>
 
     <div class="home-container">
+      <section class="welcome-banner" aria-label="社区欢迎语">
+        <div class="welcome-copy">
+          <span class="welcome-date">{{ todayLabel }} · V-Blog 社区</span>
+          <h1>让每一种声音，<span>都被看见。</span></h1>
+          <p>记录此刻的新鲜事，和有趣的人分享你的世界。</p>
+        </div>
+        <div class="welcome-orbit" aria-hidden="true"><span>V</span></div>
+      </section>
       <PostEditor @published="handlePostPublished" />
 
-      <!-- Feed 切换选项卡 -->
-      <div class="feed-tabs glass-card">
-        <div class="tab-item active">
-          <span>🌍 推荐</span>
+      <div class="feed-heading">
+        <div>
+          <span class="section-kicker">COMMUNITY FEED</span>
+          <h2>正在发生</h2>
         </div>
-        <!-- 关注功能暂时禁用，等待后端API支持 -->
-        <!-- <div class="tab-item" :class="{ active: feedType === 'following' }" @click="handleFeedTypeChange('following')">
-          <span>👥 关注</span>
-        </div> -->
+        <span class="latest-pill"><span class="latest-dot"></span>最新动态</span>
       </div>
 
       <div v-loading="loading" class="posts-container">
@@ -209,6 +221,95 @@ onMounted(() => {
   max-width: 100%;
 }
 
+.welcome-banner {
+  position: relative;
+  overflow: hidden;
+  min-height: 184px;
+  margin-bottom: 20px;
+  padding: 30px 34px;
+  border: 1px solid rgba(255, 189, 155, 0.23);
+  border-radius: 24px;
+  background: linear-gradient(116deg, #35283b 0%, #272a43 50%, #1c2941 100%);
+  box-shadow: 0 24px 44px rgba(6, 10, 24, 0.2);
+}
+
+.welcome-banner::before {
+  content: '';
+  position: absolute;
+  width: 360px;
+  height: 360px;
+  right: -74px;
+  top: -135px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 135, 111, 0.32), transparent 66%);
+}
+
+.welcome-copy { position: relative; z-index: 1; max-width: 440px; }
+.welcome-date, .section-kicker {
+  color: #ffc6b0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.welcome-copy h1 {
+  margin: 12px 0 9px;
+  color: #fff;
+  font-size: clamp(25px, 3vw, 34px);
+  line-height: 1.25;
+  letter-spacing: -0.03em;
+}
+.welcome-copy h1 span { color: #ffac8d; }
+.welcome-copy p { color: #c9c8d8; font-size: 14px; }
+.welcome-orbit {
+  position: absolute;
+  right: 45px;
+  top: 18px;
+  width: 156px;
+  height: 156px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 204, 184, 0.4);
+  border-radius: 50%;
+  box-shadow: inset 0 0 35px rgba(255, 126, 103, 0.15), 0 0 50px rgba(255, 126, 103, 0.1);
+  transform: rotate(-15deg);
+}
+.welcome-orbit::after {
+  content: '';
+  position: absolute;
+  inset: 16px;
+  border: 1px dashed rgba(255, 214, 186, 0.36);
+  border-radius: 50%;
+}
+.welcome-orbit span {
+  font-size: 73px;
+  font-weight: 900;
+  font-style: italic;
+  color: #ff987e;
+  text-shadow: 0 0 35px rgba(255, 118, 94, 0.5);
+}
+
+.feed-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  margin: 30px 2px 17px;
+}
+.feed-heading h2 { margin-top: 4px; font-size: 22px; line-height: 1.2; color: var(--text-main); }
+.section-kicker { color: var(--text-secondary); font-size: 10px; }
+.latest-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  color: #ffc1aa;
+  background: rgba(255, 121, 100, 0.1);
+  border: 1px solid rgba(255, 121, 100, 0.16);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.latest-dot { width: 6px; height: 6px; border-radius: 50%; background: #ff8e70; box-shadow: 0 0 8px #ff8e70; }
+
 .user-card-right {
   margin-bottom: 20px;
   overflow: hidden;
@@ -217,7 +318,7 @@ onMounted(() => {
 
 .user-cover {
   height: 80px;
-  background: var(--primary-gradient);
+  background: radial-gradient(circle at 85% 15%, rgba(255, 199, 151, .55), transparent 30%), linear-gradient(120deg, #624056, #363b63 65%, #303e66);
 }
 
 .user-info-right {
@@ -228,7 +329,7 @@ onMounted(() => {
 }
 
 .user-avatar-right {
-  border: 4px solid var(--glass-card-bg);
+  border: 4px solid #1c2335;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
@@ -250,13 +351,42 @@ onMounted(() => {
   display: flex;
   justify-content: space-around;
   padding-top: 16px;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-top: 1px solid var(--glass-border);
+}
+
+@media (max-width: 600px) {
+  .welcome-banner { min-height: 164px; padding: 26px 22px; }
+  .welcome-copy { max-width: 280px; }
+  .welcome-copy h1 { font-size: 25px; }
+  .welcome-copy p { font-size: 12px; }
+  .welcome-orbit { width: 105px; height: 105px; right: -30px; top: 43px; opacity: .46; }
+  .welcome-orbit span { font-size: 50px; }
 }
 
 .stat-item {
   display: flex;
   flex-direction: column;
   align-items: center;
+  flex: 1;
+  padding: 8px 4px;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.stat-item:hover,
+.stat-item:focus-visible {
+  background: rgba(255, 142, 112, 0.12);
+}
+
+.stat-item:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.stat-item:hover .stat-num,
+.stat-item:hover .stat-label {
+  color: var(--primary-color);
 }
 
 .stat-num {

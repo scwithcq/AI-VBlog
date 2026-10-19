@@ -7,7 +7,7 @@ import java.util.Map;
 
 /**
  * PostLike Mapper Interface
- * 
+ *
  * @author V-Blog Team
  */
 public interface PostLikeMapper {
@@ -68,5 +68,7 @@ public interface PostLikeMapper {
      * @return post like
      */
     PostLike selectByUserAndPostId(Long postId, Long userId);
+
+    Long countByPostId(Long postId);
 
 }

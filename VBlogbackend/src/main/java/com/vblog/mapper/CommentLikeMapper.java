@@ -6,7 +6,7 @@ import java.util.Map;
 
 /**
  * Comment Like Mapper Interface
- * 
+ *
  * @author V-Blog Team
  */
 public interface CommentLikeMapper {
@@ -50,6 +50,8 @@ public interface CommentLikeMapper {
    * @return affected rows
    */
   int deleteById(Long likeId);
+
+  int deleteByCommentId(Long commentId);
 
   /**
    * Delete by map

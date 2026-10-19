@@ -15,13 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 帖子服务实现类
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -36,9 +34,18 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public Post publishPost(Long userId, String content, List<String> images, String videoUrl, Long sourceId) {
+        if (sourceId != null && !postExists(sourceId)) throw new IllegalArgumentException("源帖子不存在");
+        if (sourceId == null && (content == null || content.isBlank()) && (images == null || images.isEmpty())
+                && (videoUrl == null || videoUrl.isBlank())) throw new IllegalArgumentException("帖子内容不能为空");
+        if (images != null && images.size() > 9) throw new IllegalArgumentException("最多上传9张图片");
+        if (images != null) {
+            if (images.size() > 9) throw new IllegalArgumentException("最多上传9张图片");
+            images.forEach(com.vblog.utils.InputSafety::media);
+        }
+        com.vblog.utils.InputSafety.media(videoUrl);
         // 验证内容长度（最大2000字符）
         if (content != null && content.length() > 2000) {
-            throw new RuntimeException("内容超过2000字符限制");
+            throw new IllegalArgumentException("内容超过2000字符限制");
         }
 
         // 过滤XSS
@@ -70,17 +77,9 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public Page<Post> getPostList(int page, int size) {
-        // 获取所有帖子并按创建时间排序
-        List<Post> allPosts = postMapper.selectAll();
-        allPosts.sort(Comparator.comparing(Post::getCreateTime).reversed());
-
-        // 分页处理
-        long total = allPosts.size();
-        int offset = (page - 1) * size;
-        int end = Math.min(offset + size, allPosts.size());
-        List<Post> paginatedPosts = allPosts.subList(offset, end);
-
-        return new Page<>(page, size, total, paginatedPosts);
+        long total = postMapper.countAllPosts();
+        long offset = (long) (page - 1) * size;
+        return new Page<>(page, size, total, postMapper.selectPage(offset, size));
     }
 
     @Override
@@ -90,19 +89,14 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public Page<Post> getUserPosts(Long userId, int page, int size) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("user_id", userId);
+        long total = postMapper.countByUserId(userId);
+        long offset = (long) (page - 1) * size;
+        return new Page<>(page, size, total, postMapper.selectUserPage(userId, offset, size));
+    }
 
-        List<Post> allPosts = postMapper.selectByMap(map);
-        allPosts.sort(Comparator.comparing(Post::getCreateTime).reversed());
-
-        // 分页处理
-        long total = allPosts.size();
-        int offset = (page - 1) * size;
-        int end = Math.min(offset + size, allPosts.size());
-        List<Post> paginatedPosts = allPosts.subList(offset, end);
-
-        return new Page<>(page, size, total, paginatedPosts);
+    @Override
+    public long countUserPosts(Long userId) {
+        return postMapper.countByUserId(userId);
     }
 
     @Override
@@ -144,17 +138,22 @@ public class PostServiceImpl implements PostService {
         // 检查帖子是否存在
         Post post = postMapper.selectById(postId);
         if (post == null) {
-            throw new RuntimeException("帖子不存在");
+            throw new IllegalArgumentException("帖子不存在");
         }
 
         // 检查是否是帖子作者
         if (!post.getUserId().equals(userId)) {
-            throw new RuntimeException("无权修改此帖子");
+            throw new IllegalArgumentException("无权修改此帖子");
         }
 
+        if (images != null) {
+            if (images.size() > 9) throw new IllegalArgumentException("最多上传9张图片");
+            images.forEach(com.vblog.utils.InputSafety::media);
+        }
+        com.vblog.utils.InputSafety.media(videoUrl);
         // 验证内容长度（最大2000字符）
         if (content != null && content.length() > 2000) {
-            throw new RuntimeException("内容超过2000字符限制");
+            throw new IllegalArgumentException("内容超过2000字符限制");
         }
 
         // 过滤XSS
@@ -167,15 +166,9 @@ public class PostServiceImpl implements PostService {
         }
 
         // 更新帖子内容
-        post.setContent(content);
-        post.setVideoUrl(videoUrl);
-
-        // 更新图片列表
-        if (images != null && !images.isEmpty()) {
-            post.setImages(JSON.toJSONString(images));
-        } else {
-            post.setImages(null);
-        }
+        if (content != null) post.setContent(content);
+        if (videoUrl != null) post.setVideoUrl(videoUrl);
+        if (images != null) post.setImages(JSON.toJSONString(images));
 
         postMapper.update(post);
         log.info("Post updated: postId={}, userId={}", postId, userId);

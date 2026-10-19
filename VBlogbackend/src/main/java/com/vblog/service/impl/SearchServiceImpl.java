@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 
 /**
  * 搜索服务实现类
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -35,6 +35,7 @@ public class SearchServiceImpl implements SearchService {
     public Page<User> searchUsers(String keyword, int page, int size) {
         // 获取所有用户
         List<User> allUsers = userMapper.selectAll();
+        allUsers = allUsers.stream().map(com.vblog.utils.InputSafety::publicUser).toList();
 
         // 根据关键词过滤用户
         List<User> filteredUsers = allUsers.stream()
@@ -55,14 +56,14 @@ public class SearchServiceImpl implements SearchService {
     public Page<Post> searchPosts(String keyword, int page, int size) {
         // 获取所有帖子
         List<Post> allPosts = postMapper.selectAll();
-        
+
         // 根据关键词过滤帖子
         List<Post> filteredPosts = allPosts.stream()
-                .filter(post -> keyword == null || 
+                .filter(post -> keyword == null ||
                         (post.getContent() != null && post.getContent().contains(keyword)))
                 .sorted(Comparator.comparing(Post::getCreateTime).reversed())
                 .collect(Collectors.toList());
-        
+
         // 分页处理
         long total = filteredPosts.size();
         int offset = (page - 1) * size;

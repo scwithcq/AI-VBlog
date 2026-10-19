@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 /**
  * 评论服务实现类
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -58,6 +58,15 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional
     public Comment addComment(Long userId, Long postId, String content, Long parentId) {
+        if (!postService.postExists(postId)) {
+            throw new IllegalArgumentException("帖子不存在");
+        }
+        if (parentId != null) {
+            Comment parent = commentMapper.selectById(parentId);
+            if (parent == null || !postId.equals(parent.getPostId())) {
+                throw new IllegalArgumentException("回复的评论不属于此帖子");
+            }
+        }
         // 过滤XSS
         content = xssUtil.filter(content);
 
@@ -82,7 +91,8 @@ public class CommentServiceImpl implements CommentService {
             // 如果是回复评论，也通知被回复的用户
             if (parentId != null) {
                 Comment parentComment = commentMapper.selectById(parentId);
-                if (parentComment != null && !parentComment.getUserId().equals(userId)) {
+                if (parentComment != null && !parentComment.getUserId().equals(userId)
+                        && (post == null || !parentComment.getUserId().equals(post.getUserId()))) {
                     systemNotificationService.createCommentNotification(
                             parentComment.getUserId(), userId, postId, comment.getCommentId(), content);
                 }
@@ -97,9 +107,7 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public List<CommentTree> getCommentsByPostId(Long postId) {
         // 获取该帖子的所有评论
-        Map<String, Object> queryMap = new HashMap<>();
-        queryMap.put("post_id", postId);
-        List<Comment> comments = commentMapper.selectByMap(queryMap);
+        List<Comment> comments = commentMapper.selectByPostId(postId);
 
         // 按创建时间排序评论
         comments.sort(Comparator.comparing(Comment::getCreateTime));
@@ -148,8 +156,23 @@ public class CommentServiceImpl implements CommentService {
             return false;
         }
 
-        // 删除评论
-        commentMapper.deleteById(commentId);
+        // 只在当前帖子内清理此评论及其回复，防止留下不可见的孤立回复。
+        List<Comment> postComments = commentMapper.selectByPostId(comment.getPostId());
+        java.util.Set<Long> deletedIds = new java.util.HashSet<>();
+        deletedIds.add(commentId);
+        boolean changed;
+        do {
+            changed = false;
+            for (Comment candidate : postComments) {
+                if (deletedIds.contains(candidate.getParentId()) && deletedIds.add(candidate.getCommentId())) {
+                    changed = true;
+                }
+            }
+        } while (changed);
+        for (Long id : deletedIds) {
+            commentLikeMapper.deleteByCommentId(id);
+            commentMapper.deleteById(id);
+        }
         log.info("Comment deleted: commentId={}, userId={}", commentId, userId);
         return true;
     }
@@ -203,12 +226,7 @@ public class CommentServiceImpl implements CommentService {
         CommentLike commentLike = new CommentLike();
         commentLike.setCommentId(commentId);
         commentLike.setUserId(userId);
-        commentLikeMapper.insert(commentLike);
-
-        // 更新评论的点赞数
-        Long currentLikeCount = comment.getLikeCount() != null ? comment.getLikeCount() : 0L;
-        comment.setLikeCount(currentLikeCount + 1);
-        commentMapper.update(comment);
+        if (commentLikeMapper.insert(commentLike) == 0) return false;
 
         log.info("Comment liked: commentId={}, userId={}", commentId, userId);
         return true;
@@ -237,11 +255,6 @@ public class CommentServiceImpl implements CommentService {
         // 删除点赞记录
         commentLikeMapper.deleteByMap(params);
 
-        // 更新评论的点赞数
-        Long currentLikeCount = comment.getLikeCount() != null ? comment.getLikeCount() : 0L;
-        comment.setLikeCount(Math.max(0L, currentLikeCount - 1));
-        commentMapper.update(comment);
-
         log.info("Comment unliked: commentId={}, userId={}", commentId, userId);
         return true;
     }
@@ -257,16 +270,6 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public Long getCommentLikeCount(Long commentId) {
-        // 优先从数据库点赞表统计
-        Long likeCount = commentLikeMapper.countByCommentId(commentId);
-
-        // 同步更新评论表的点赞数（可选，保持数据一致性）
-        Comment comment = commentMapper.selectById(commentId);
-        if (comment != null && !likeCount.equals(comment.getLikeCount())) {
-            comment.setLikeCount(likeCount);
-            commentMapper.update(comment);
-        }
-
-        return likeCount;
+        return commentLikeMapper.countByCommentId(commentId);
     }
 }

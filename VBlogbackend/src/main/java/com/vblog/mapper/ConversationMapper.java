@@ -9,7 +9,7 @@ import java.util.List;
 
 /**
  * 会话Mapper接口
- * 
+ *
  * @author V-Blog团队
  */
 @Mapper
@@ -34,4 +34,9 @@ public interface ConversationMapper extends BaseMapper<Conversation> {
   int clearUnreadCount(
       @Param("conversationId") String conversationId,
       @Param("userId") Long userId);
+
+  int setUnreadCount(
+      @Param("conversationId") String conversationId,
+      @Param("userId") Long userId,
+      @Param("count") Integer count);
 }

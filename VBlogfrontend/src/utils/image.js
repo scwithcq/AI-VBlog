@@ -1,6 +1,10 @@
+import boyAvatar from '../assets/Images/boy.png'
+import girlAvatar from '../assets/Images/girl.png'
+import smileAvatar from '../assets/Images/smilepeople.png'
+
 /**
  * 图片 URL 处理工具
- * 
+ *
  * 后端返回的图片路径格式：/uploads/images/uuid.jpg
  * 需要拼接完整的访问路径才能正确显示
  */
@@ -11,24 +15,26 @@
  * @returns {string} 完整的图片访问路径
  */
 export function getImageUrl(imagePath) {
-  if (!imagePath) {
+  if (typeof imagePath !== 'string' || !imagePath.trim()) {
     return ''
   }
+  if (imagePath === '/uploads/default-avatar.png') {
+    return '/default-avatar.jpg'
+  }
 
-  // 如果已经是完整的 URL (http/https)，直接返回
-  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+  // Migrate old local development URLs to the current site.
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(imagePath)) {
+    imagePath = new URL(imagePath).pathname
+  } else if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
     return imagePath
   }
 
-  // 如果是相对路径，拼接 API 基础路径
-  // 开发环境：http://localhost:8080/uploads/images/uuid.jpg
-  // 生产环境：通过 Vite 代理转发到后端
-  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-  
-  // 确保路径以 / 开头
+  const presets = { boy: boyAvatar, girl: girlAvatar, smilepeople: smileAvatar }
+  const preset = imagePath.match(/^(?:\/src\/assets\/Images\/|\/avatars\/)(boy|girl|smilepeople)\.png$/)
+  if (preset) return presets[preset[1]]
+
   const path = imagePath.startsWith('/') ? imagePath : `/${imagePath}`
-  
-  return `${baseURL}${path}`
+  return path.startsWith('/uploads/') ? `/api${path}` : path
 }
 
 /**
@@ -89,10 +95,10 @@ export function isValidImageSize(file, maxSize = 5) {
 export function compressImage(file, maxWidth = 1920, quality = 0.8) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    
+
     reader.onload = (e) => {
       const img = new Image()
-      
+
       img.onload = () => {
         const canvas = document.createElement('canvas')
         let width = img.width
@@ -136,4 +142,13 @@ export function compressImage(file, maxWidth = 1920, quality = 0.8) {
 
     reader.readAsDataURL(file)
   })
+}
+
+// Normalize avatar fields consistently for posts, comments, friends and notifications.
+export function normalizeMediaFields(value) {
+  if (!value || typeof value !== 'object') return value
+  if (Array.isArray(value)) return value.map(normalizeMediaFields)
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+    key, /avatar$/i.test(key) ? getImageUrl(item) || '/default-avatar.jpg' : normalizeMediaFields(item)
+  ]))
 }

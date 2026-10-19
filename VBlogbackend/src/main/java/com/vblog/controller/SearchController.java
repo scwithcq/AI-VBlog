@@ -16,7 +16,7 @@ import java.util.List;
 
 /**
  * Search Controller
- * 
+ *
  * @author V-Blog Team
  */
 @Slf4j
@@ -34,9 +34,9 @@ public class SearchController extends BaseController {
     @GetMapping("/users")
     public Result<Page<User>> searchUsers(
             @RequestParam(required = false) String q,
-            @RequestParam(defaultValue = "1") @Min(1) int page,
-            @RequestParam(defaultValue = "10") @Min(1) int size) {
-        
+            @RequestParam(defaultValue = "1") @Min(1) @jakarta.validation.constraints.Max(100000) int page,
+            @RequestParam(defaultValue = "10") @Min(1) @jakarta.validation.constraints.Max(100) int size) {
+
         Page<User> users = searchService.searchUsers(q, page, size);
         return Result.success(users);
     }
@@ -47,9 +47,9 @@ public class SearchController extends BaseController {
     @GetMapping("/posts")
     public Result<Page<Post>> searchPosts(
             @RequestParam(required = false) String q,
-            @RequestParam(defaultValue = "1") @Min(1) int page,
-            @RequestParam(defaultValue = "10") @Min(1) int size) {
-        
+            @RequestParam(defaultValue = "1") @Min(1) @jakarta.validation.constraints.Max(100000) int page,
+            @RequestParam(defaultValue = "10") @Min(1) @jakarta.validation.constraints.Max(100) int size) {
+
         Page<Post> posts = searchService.searchPosts(q, page, size);
         return Result.success(posts);
     }
@@ -59,11 +59,9 @@ public class SearchController extends BaseController {
      */
     @GetMapping("/topics/hot")
     public Result<List<Topic>> getHotTopics(
-            @RequestParam(defaultValue = "10") @Min(1) int limit) {
-        
+            @RequestParam(defaultValue = "10") @Min(1) @jakarta.validation.constraints.Max(100) int limit) {
+
         List<Topic> topics = searchService.getHotTopics(limit);
         return Result.success(topics);
     }
 }
-
-

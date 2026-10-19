@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ElAvatar, ElButton, ElInput, ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../store/userStore'
 import { useRouter } from 'vue-router'
@@ -35,6 +35,21 @@ const loadingLike = ref(false)
 const loadingDelete = ref(false)
 
 const emit = defineEmits(['reply', 'delete', 'like'])
+let statusVersion = 0
+watch(() => [props.comment.commentId, userStore.userId], async () => {
+  const version = ++statusVersion
+  isLiked.value = false
+  likeCount.value = Number(props.comment.likeCount) || 0
+  if (!userStore.isLoggedIn) return
+  try {
+    const result = await getCommentLikeStatus(props.comment.commentId)
+    if (version !== statusVersion) return
+    isLiked.value = Boolean(result.isLiked)
+    likeCount.value = Number(result.likeCount) || 0
+  } catch (error) {
+    console.error('加载评论点赞状态失败:', error)
+  }
+}, { immediate: true })
 
 // 计算是否为当前用户的评论
 const isOwnComment = computed(() => {
@@ -85,6 +100,7 @@ const goToProfile = (userId) => {
 }
 
 const handleLike = async () => {
+  if (loadingLike.value) return
   if (!userStore.isLoggedIn) {
     ElMessage.warning('请先登录')
     return
@@ -94,14 +110,14 @@ const handleLike = async () => {
   try {
     if (isLiked.value) {
       // 取消点赞
-      await unlikeComment(props.comment.commentId)
+      const count = await unlikeComment(props.comment.commentId)
       isLiked.value = false
-      likeCount.value--
+      likeCount.value = Number(count) || 0
     } else {
       // 点赞
-      await likeComment(props.comment.commentId)
+      const count = await likeComment(props.comment.commentId)
       isLiked.value = true
-      likeCount.value++
+      likeCount.value = Number(count) || 0
     }
     emit('like', props.comment.commentId, isLiked.value)
   } catch (error) {
@@ -136,7 +152,7 @@ const handleDelete = async () => {
 <template>
   <div class="comment-item">
     <div class="comment-main">
-      <el-avatar :src="user?.avatar || '/default-avatar.png'" :size="32" @click="goToProfile(comment.userId)"
+      <el-avatar :src="user?.avatar || '/default-avatar.jpg'" :size="32" @click="goToProfile(comment.userId)"
         style="cursor: pointer" />
       <div class="comment-content">
         <div class="comment-header">
@@ -213,7 +229,7 @@ const handleDelete = async () => {
 .comment-text {
   font-size: 14px;
   line-height: 1.6;
-  color: #303133;
+  color: var(--text-regular);
   margin-bottom: 8px;
   word-break: break-word;
   white-space: pre-wrap;

@@ -7,6 +7,7 @@ import 'element-plus/dist/index.css'
 
 // 引入全局样式 (如果此时还没这文件，可以先忽略或建一个空的)
 import './style.css'
+import './theme.css'
 
 const app = createApp(App)
 

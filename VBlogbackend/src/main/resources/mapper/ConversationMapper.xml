@@ -20,18 +20,24 @@
     <select id="selectUserConversations" resultMap="BaseResultMap">
         SELECT *
         FROM tb_conversation
-        WHERE user1_id = #{userId} OR user2_id = #{userId}
+        WHERE (user1_id = #{userId} OR user2_id = #{userId})
+          AND EXISTS (
+              SELECT 1 FROM tb_friendship f
+              WHERE f.user_id = #{userId}
+                AND f.friend_id = CASE WHEN user1_id = #{userId} THEN user2_id ELSE user1_id END
+                AND f.status = 1
+          )
         ORDER BY last_message_time DESC
     </select>
 
     <!-- 更新会话未读数（增加） -->
     <update id="updateUnreadCount">
         UPDATE tb_conversation
-        SET user1_unread_count = CASE 
+        SET user1_unread_count = CASE
                 WHEN user1_id = #{userId} THEN user1_unread_count + #{increment}
                 ELSE user1_unread_count
             END,
-            user2_unread_count = CASE 
+            user2_unread_count = CASE
                 WHEN user2_id = #{userId} THEN user2_unread_count + #{increment}
                 ELSE user2_unread_count
             END,
@@ -42,16 +48,25 @@
     <!-- 清零会话未读数 -->
     <update id="clearUnreadCount">
         UPDATE tb_conversation
-        SET user1_unread_count = CASE 
+        SET user1_unread_count = CASE
                 WHEN user1_id = #{userId} THEN 0
                 ELSE user1_unread_count
             END,
-            user2_unread_count = CASE 
+            user2_unread_count = CASE
                 WHEN user2_id = #{userId} THEN 0
                 ELSE user2_unread_count
             END,
             update_time = NOW()
         WHERE conversation_id = #{conversationId}
+    </update>
+
+    <update id="setUnreadCount">
+        UPDATE tb_conversation
+        SET user1_unread_count = CASE WHEN user1_id = #{userId} THEN #{count} ELSE user1_unread_count END,
+            user2_unread_count = CASE WHEN user2_id = #{userId} THEN #{count} ELSE user2_unread_count END,
+            update_time = NOW()
+        WHERE conversation_id = #{conversationId}
+          AND (user1_id = #{userId} OR user2_id = #{userId})
     </update>
 
 </mapper>

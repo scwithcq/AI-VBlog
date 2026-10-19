@@ -83,14 +83,14 @@ onMounted(() => {
       <div v-loading="loading" class="following-list">
         <el-empty v-if="following.length === 0 && !loading" description="还没有关注任何人" :image-size="120">
           <template #description>
-            <span style="color: #909399;">发现感兴趣的人，开始关注吧～</span>
+            <span class="empty-description">发现感兴趣的人，开始关注吧～</span>
           </template>
         </el-empty>
 
         <div v-else>
           <el-card v-for="followUser in following" :key="followUser.userId" class="follow-card">
             <div class="follow-item">
-              <el-avatar :src="followUser.avatar || '/default-avatar.png'" :size="40"
+              <el-avatar :src="followUser.avatar || '/default-avatar.jpg'" :size="40"
                 @click="goToProfile(followUser.userId)" style="cursor: pointer" />
               <div class="follow-info">
                 <h4 @click="goToProfile(followUser.userId)" style="cursor: pointer; margin: 0">
@@ -130,14 +130,19 @@ onMounted(() => {
   gap: 16px;
 }
 
+.empty-description {
+  color: var(--text-secondary);
+}
+
 .user-info h3 {
+  color: var(--text-main);
   margin: 0;
   font-size: 18px;
 }
 
 .user-info p {
   margin: 4px 0 0 0;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -182,7 +187,7 @@ onMounted(() => {
 .follow-bio {
   margin: 0;
   font-size: 13px;
-  color: #909399;
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -193,6 +198,6 @@ onMounted(() => {
   justify-content: center;
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--glass-border);
 }
 </style>

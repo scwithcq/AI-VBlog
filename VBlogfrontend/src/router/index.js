@@ -63,6 +63,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/favorite',
+    name: 'Favorite',
+    component: () => import('../views/Favorite.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/notification',
     name: 'Notification',
     component: () => import('../views/Notification.vue'),

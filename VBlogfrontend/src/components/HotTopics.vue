@@ -1,10 +1,10 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAllUsers } from '../api/user'
 import { sendFriendRequest, getFriendList } from '../api/friendship'
 import { useUserStore } from '../store/userStore'
-import { ElAvatar, ElButton, ElEmpty, ElSkeleton, ElSkeletonItem, ElMessage, ElIcon } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { UserFilled, ArrowRight } from '@element-plus/icons-vue'
 import { getImageUrl } from '../utils/image'
 
@@ -56,7 +56,7 @@ const loadRecommendUsers = async () => {
 }
 
 // 默认头像URL
-const DEFAULT_AVATAR = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
+const DEFAULT_AVATAR = '/default-avatar.jpg'
 
 // 处理用户头像路径
 const getUserAvatar = (avatar) => {
@@ -77,8 +77,8 @@ const handleUserClick = (user) => {
   router.push(`/profile/${user.userId}`)
 }
 
-// 关注用户
-const handleFollow = async (user, event) => {
+// 发送好友申请
+const handleAddFriend = async (user, event) => {
   event.stopPropagation() // 阻止事件冒泡
 
   try {
@@ -111,14 +111,14 @@ onMounted(() => {
         <el-icon :size="20" class="header-icon">
           <UserFilled />
         </el-icon>
-        <h3>推荐关注</h3>
+        <h3>推荐好友</h3>
       </div>
-      <div class="header-more" @click="router.push('/search')">
+      <button type="button" class="header-more" @click="router.push('/search')">
         <span>更多</span>
         <el-icon>
           <ArrowRight />
         </el-icon>
-      </div>
+      </button>
     </div>
 
     <div v-if="loading" class="loading-skeleton">
@@ -137,19 +137,19 @@ onMounted(() => {
     </div>
 
     <div v-else class="users-list">
-      <div v-for="user in recommendUsers" :key="user.userId" class="user-item" @click="handleUserClick(user)">
+      <div v-for="user in recommendUsers" :key="user.userId" class="user-item">
         <el-avatar :src="getUserAvatar(user.avatar)" :size="40" class="user-avatar" @error="handleAvatarError">
           <el-icon :size="24">
             <UserFilled />
           </el-icon>
         </el-avatar>
-        <div class="user-info">
+        <button type="button" class="user-info" @click="handleUserClick(user)">
           <div class="user-name">{{ user.username }}</div>
           <div class="user-bio" v-if="user.bio">{{ user.bio }}</div>
-        </div>
+        </button>
         <el-button :type="user.isFriend ? 'info' : 'primary'" size="small" :disabled="user.isFriend || user.requestSent"
-          @click="handleFollow(user, $event)" class="follow-btn">
-          {{ user.isFriend ? '已关注' : (user.requestSent ? '已申请' : '关注') }}
+          @click="handleAddFriend(user, $event)" class="follow-btn">
+          {{ user.isFriend ? '已是好友' : (user.requestSent ? '已申请' : '加好友') }}
         </el-button>
       </div>
     </div>
@@ -157,9 +157,9 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 推荐关注卡片容器 */
+/* 推荐好友卡片 */
 .hot-topics-card {
-  padding: 20px;
+  padding: 22px;
   margin-bottom: 20px;
 }
 
@@ -169,7 +169,7 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .header-title {
@@ -200,6 +200,10 @@ onMounted(() => {
   align-items: center;
   gap: 2px;
   transition: color 0.2s;
+  padding: 5px 0 5px 8px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .header-more:hover {
@@ -218,28 +222,26 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px;
-  border-radius: 8px;
-  cursor: pointer;
+  padding: 10px 8px;
+  border-radius: 12px;
   transition: all 0.2s;
 }
 
 .user-item:hover {
-  background: rgba(139, 92, 246, 0.08);
-  transform: translateX(2px);
+  background: rgba(255, 121, 100, 0.08);
 }
 
 /* 用户头像 */
 .user-avatar {
   flex-shrink: 0;
-  border: 2px solid rgba(139, 92, 246, 0.1);
+  border: 2px solid rgba(255, 121, 100, 0.16);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: all 0.3s;
 }
 
 .user-item:hover .user-avatar {
   border-color: var(--primary-color);
-  box-shadow: 0 2px 12px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 2px 12px rgba(255, 121, 100, 0.22);
 }
 
 /* 用户信息 */
@@ -249,7 +251,16 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  text-align: left;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  cursor: pointer;
 }
+.user-info:hover { background: transparent; border: 0; }
 
 .user-name {
   font-size: 14px;
@@ -294,164 +305,3 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 </style>
-
-
-/* 卡片头部 */
-.card-header {
-display: flex;
-justify-content: space-between;
-align-items: center;
-margin-bottom: 16px;
-}
-
-.header-title {
-display: flex;
-align-items: center;
-gap: 8px;
-}
-
-.header-icon {
-color: var(--danger-color);
-font-size: 20px;
-}
-
-.card-header h3 {
-margin: 0;
-font-size: 18px;
-font-weight: 600;
-color: inherit;
-}
-
-.header-more {
-cursor: pointer;
-font-size: 14px;
-color: var(--info-color);
-transition: var(--transition-base);
-}
-
-.header-more:hover {
-color: var(--primary-color);
-}
-
-/* 空状态样式 */
-.empty-topics {
-padding: 24px 0;
-display: flex;
-justify-content: center;
-align-items: center;
-}
-
-/* 加载骨架屏 */
-.loading-skeleton {
-padding: 8px 0;
-}
-
-.skeleton-item {
-margin-bottom: 12px;
-}
-
-/* 话题列表 */
-.topics-list {
-display: flex;
-flex-direction: column;
-gap: 12px;
-}
-
-/* 话题项 */
-.topic-item {
-display: flex;
-align-items: flex-start;
-gap: 12px;
-padding: 8px;
-border-radius: var(--border-radius-md);
-cursor: pointer;
-transition: var(--transition-base);
-}
-
-.topic-item:hover {
-background-color: rgba(139, 92, 246, 0.15);
-transform: translateX(4px);
-}
-
-/* 排名样式 */
-.topic-rank {
-width: 24px;
-text-align: center;
-font-weight: bold;
-font-size: 14px;
-line-height: 20px;
-color: var(--info-color);
-flex-shrink: 0;
-margin-top: 2px;
-}
-
-/* 前三名特殊样式 */
-.topic-rank.top-one {
-color: #f56c6c;
-font-size: 16px;
-}
-
-.topic-rank.top-two {
-color: #e6a23c;
-font-size: 15px;
-}
-
-.topic-rank.top-three {
-color: #67c23a;
-font-size: 15px;
-}
-
-/* 话题内容 */
-.topic-content {
-flex: 1;
-min-width: 0;
-display: flex;
-flex-direction: column;
-gap: 4px;
-}
-
-/* 话题名称 */
-.topic-name {
-font-size: 14px;
-color: inherit;
-font-weight: 500;
-line-height: 1.4;
-word-break: break-word;
-}
-
-/* 话题描述 */
-.topic-desc {
-font-size: 12px;
-color: var(--info-color);
-line-height: 1.3;
-word-break: break-word;
-}
-
-/* 热度标签 */
-.heat-tag {
-margin-left: auto;
-background-color: rgba(245, 108, 108, 0.2);
-color: var(--danger-color);
-border: none;
-font-size: 12px;
-font-weight: 500;
-padding: 2px 8px;
-border-radius: var(--border-radius-full);
-flex-shrink: 0;
-margin-top: 2px;
-}
-
-/* 响应式设计 */
-@media (max-width: 1200px) {
-.hot-topics-card {
-padding: 12px;
-}
-
-.topic-name {
-font-size: 13px;
-}
-
-.heat-tag {
-font-size: 11px;
-}
-}

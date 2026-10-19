@@ -1,35 +1,40 @@
 <script setup>
-import { ref, nextTick, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted, computed } from 'vue'
 import { ElMessage, ElMessageBox, ElDialog, ElInput } from 'element-plus'
 import Header from '../components/Header.vue'
 import { ElAvatar, ElButton, ElBadge, ElIcon, ElScrollbar } from 'element-plus'
 import { Search, Plus, MoreFilled, Picture, Paperclip, Bell, User } from '@element-plus/icons-vue'
 import { useUserStore } from '../store/userStore'
+import { useRealtimeStore } from '../store/realtimeStore'
 import { getConversations, getConversationMessages, sendMessage as sendMessageApi, markConversationRead, generateConversationId } from '../api/message'
 import { getFriendList, searchUsers, sendFriendRequest, getReceivedRequests, handleFriendRequest, deleteFriend } from '../api/friendship'
 import { getUserInfo } from '../api/user'
+import { getImageUrl } from '../utils/image'
 
 const userStore = useUserStore()
+const realtimeStore = useRealtimeStore()
 const currentUser = computed(() => userStore.userInfo)
 const currentUserAvatar = computed(() => {
   // 确保头像路径正确，如果是相对路径则转换为完整URL
   const avatar = userStore.userInfo?.avatar
-  if (!avatar) return 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'
+  if (!avatar) return '/default-avatar.jpg'
   // 如果是相对路径，添加API前缀
-  if (avatar.startsWith('/')) {
-    return `http://localhost:8080${avatar}`
-  }
-  return avatar
+  return getImageUrl(avatar)
 })
 
 const activeConversationId = ref('')
 const activeOtherUser = ref(null)
+const pendingConversationId = ref('')
 const messageInput = ref('')
 const searchKeyword = ref('')
 const scrollbarRef = ref(null)
 const conversations = ref([])
 const messages = ref([])
 const loading = ref(false)
+let messageLoadId = 0
+let conversationLoadId = 0
+let disposed = false
+let reconnectTimer = null
 
 // 添加好友相关
 const showAddFriendDialog = ref(false)
@@ -52,7 +57,8 @@ const pollingInterval = 3000 // 3秒轮询一次
 
 // WebSocket 连接
 const connectWebSocket = () => {
-  const token = localStorage.getItem('token')
+  if (disposed) return
+  const token = sessionStorage.getItem('token')
   if (!token) {
     console.warn('未找到 Token，无法连接 WebSocket')
     startPolling() // 启动轮询
@@ -60,7 +66,8 @@ const connectWebSocket = () => {
   }
 
   try {
-    const wsUrl = `ws://localhost:8080/ws/message?token=${token}`
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${protocol}//${window.location.host}/api/ws/message?token=${encodeURIComponent(token)}`
     ws.value = new WebSocket(wsUrl)
 
     ws.value.onopen = () => {
@@ -85,6 +92,7 @@ const connectWebSocket = () => {
     }
 
     ws.value.onclose = (event) => {
+      if (disposed) return
       console.log('⚠️ WebSocket 连接关闭')
       wsConnected.value = false
 
@@ -93,7 +101,7 @@ const connectWebSocket = () => {
         wsReconnectAttempts.value++
         const delay = Math.min(1000 * Math.pow(2, wsReconnectAttempts.value), 10000)
         console.log(`尝试第 ${wsReconnectAttempts.value} 次重连 WebSocket (延迟 ${delay}ms)...`)
-        setTimeout(() => {
+        reconnectTimer = setTimeout(() => {
           connectWebSocket()
         }, delay)
       } else {
@@ -169,14 +177,20 @@ const handleWebSocketMessage = (data) => {
 
       if (data.data && String(data.data.conversationId) === currentConvId) {
         // 当前会话收到新消息，添加到消息列表
-        messages.value.push({
-          ...data.data,
-          type: data.data.fromUserId === currentUser.value.userId ? 'sent' : 'received',
-          time: formatMessageTime(data.data.createTime)
-        })
-        scrollToBottom()
-        // 标记为已读
-        markConversationRead(currentConvId)
+        if (!messages.value.some(msg => msg.messageId === data.data.messageId)) {
+          messages.value.push({
+            ...data.data,
+            type: data.data.fromUserId === currentUser.value.userId ? 'sent' : 'received',
+            time: formatMessageTime(data.data.createTime)
+          })
+          scrollToBottom()
+        }
+        markConversationRead(currentConvId).then(() => {
+          const active = conversations.value.find(conv => conv.conversationId === currentConvId)
+          if (active) active.unread = 0
+          loadConversations()
+          realtimeStore.refresh()
+        }).catch(error => console.error('标记消息已读失败:', error))
       }
       // 更新会话列表
       loadConversations()
@@ -193,17 +207,13 @@ const handleWebSocketMessage = (data) => {
           messages.value[recalledIndex].status = 2
           messages.value[recalledIndex].content = '消息已撤回'
         }
+        loadConversations()
+        realtimeStore.refresh()
       }
       break
     case 'friend_request':
       // 好友申请通知
       loadUnreadFriendRequestCount()
-      ElMessage({
-        message: '收到新的好友申请',
-        type: 'info',
-        duration: 3000,
-        showClose: true
-      })
       break
     case 'pong':
       // 心跳响应
@@ -217,11 +227,15 @@ const handleWebSocketMessage = (data) => {
 // 加载会话列表
 const loadConversations = async () => {
   try {
+    const loadId = ++conversationLoadId
+    const userId = currentUser.value?.userId
+    if (!userId) return
     const data = await getConversations()
+    if (loadId !== conversationLoadId || currentUser.value?.userId !== userId) return
     if (data && Array.isArray(data)) {
-      conversations.value = await Promise.all(data.map(async conv => {
+      const loadedConversations = await Promise.all(data.map(async conv => {
         // 获取对方用户ID
-        const otherUserId = conv.user1Id === currentUser.value.userId ? conv.user2Id : conv.user1Id
+        const otherUserId = conv.user1Id === userId ? conv.user2Id : conv.user1Id
 
         // 获取对方用户信息
         let otherUser = null
@@ -232,7 +246,7 @@ const loadConversations = async () => {
         }
 
         // 计算未读数
-        const unreadCount = conv.user1Id === currentUser.value.userId
+        const unreadCount = conv.user1Id === userId
           ? (conv.user1UnreadCount || 0)
           : (conv.user2UnreadCount || 0)
 
@@ -240,38 +254,34 @@ const loadConversations = async () => {
           conversationId: conv.conversationId,
           otherUserId,
           username: otherUser?.nickname || otherUser?.username || '未知用户',
-          avatar: otherUser?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default',
-          lastMsg: conv.lastMessage || '',
+          avatar: otherUser?.avatar || '/default-avatar.jpg',
+          lastMsg: conv.lastMessageContent || '',
           time: formatConversationTime(conv.lastMessageTime),
           unread: unreadCount,
           otherUser
         }
       }))
+      if (loadId !== conversationLoadId || currentUser.value?.userId !== userId) return
+      conversations.value = loadedConversations
 
-      // 如果有活动会话，确保它存在
-      if (activeConversationId.value && conversations.value.length > 0) {
-        // 确保activeConversationId是字符串
-        const currentId = typeof activeConversationId.value === 'object'
-          ? activeConversationId.value.conversationId
-          : String(activeConversationId.value)
-
-        const activeConv = conversations.value.find(c => c.conversationId === currentId)
+      if (activeConversationId.value) {
+        const activeConv = conversations.value.find(c => c.conversationId === activeConversationId.value)
         if (activeConv) {
-          // 找到了活动会话，确保使用字符串并更新otherUser信息
-          activeConversationId.value = String(activeConv.conversationId)
           activeOtherUser.value = activeConv.otherUser
-        } else {
-          // 没有找到活动会话，选择第一个
-          activeConversationId.value = String(conversations.value[0].conversationId)
-          activeOtherUser.value = conversations.value[0].otherUser
+          pendingConversationId.value = ''
+        } else if (activeConversationId.value !== pendingConversationId.value) {
+          activeConversationId.value = ''
+          activeOtherUser.value = null
+          messages.value = []
         }
-      } else if (!activeConversationId.value && conversations.value.length > 0) {
-        // 只有在没有活动会话时才自动选择第一个
-        activeConversationId.value = String(conversations.value[0].conversationId)
-        activeOtherUser.value = conversations.value[0].otherUser
       }
     } else {
       conversations.value = []
+      if (activeConversationId.value && activeConversationId.value !== pendingConversationId.value) {
+        activeConversationId.value = ''
+        activeOtherUser.value = null
+        messages.value = []
+      }
     }
   } catch (error) {
     console.error('加载会话列表失败:', error)
@@ -299,6 +309,7 @@ const loadMessages = async (conversationId, options = {}) => {
   }
 
   const { silent = false, skipScroll = false } = options
+  const loadId = ++messageLoadId
 
   if (!silent) {
     loading.value = true
@@ -306,6 +317,7 @@ const loadMessages = async (conversationId, options = {}) => {
 
   try {
     const data = await getConversationMessages(convIdStr, { page: 1, size: 100 })
+    if (loadId !== messageLoadId || activeConversationId.value !== convIdStr) return
     if (data && data.records && Array.isArray(data.records)) {
       const oldLength = messages.value.length
       const newMessages = data.records
@@ -325,9 +337,14 @@ const loadMessages = async (conversationId, options = {}) => {
         scrollToBottom()
       }
 
-      // 标记为已读
-      if (!silent) {
+      // 当前会话有未读消息时及时标记；轮询到新消息时也要标记。
+      if (newMessages.some(msg => msg.toUserId === currentUser.value?.userId && msg.status === 0) ||
+          conversations.value.find(conv => conv.conversationId === convIdStr)?.unread > 0) {
         await markConversationRead(convIdStr)
+        const active = conversations.value.find(conv => conv.conversationId === convIdStr)
+        if (active) active.unread = 0
+        await loadConversations()
+        realtimeStore.refresh()
       }
     } else {
       messages.value = []
@@ -355,7 +372,9 @@ const switchConversation = (conversation) => {
   const convId = String(conversation.conversationId)
 
   activeConversationId.value = convId
+  pendingConversationId.value = ''
   activeOtherUser.value = conversation.otherUser
+  messages.value = []
   loadMessages(convId)
 }
 
@@ -510,6 +529,7 @@ const handleRequest = async (requestId, accept) => {
     if (accept) {
       loadFriendList()
     }
+    realtimeStore.refresh()
   } catch (error) {
     console.error('处理好友申请失败:', error)
     ElMessage.error('操作失败，请检查网络连接')
@@ -553,6 +573,7 @@ const startChat = async (friend) => {
 
     // 先设置活动会话
     activeConversationId.value = convIdStr
+    pendingConversationId.value = convIdStr
     activeOtherUser.value = friend
 
     // 加载消息
@@ -598,7 +619,15 @@ const removeFriend = async (friendId) => {
 
     await deleteFriend(friendId)
     ElMessage.success('已删除好友')
+    if (activeOtherUser.value?.userId === friendId) {
+      activeConversationId.value = ''
+      pendingConversationId.value = ''
+      activeOtherUser.value = null
+      messages.value = []
+    }
     loadFriendList()
+    loadConversations()
+    realtimeStore.refresh()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除好友失败:', error)
@@ -648,15 +677,6 @@ const scrollToBottom = () => {
   })
 }
 
-// 监听活动会话变化
-watch(activeConversationId, (newId) => {
-  if (newId && typeof newId === 'string') {
-    loadMessages(newId)
-  } else if (newId && typeof newId === 'object') {
-    console.error('错误：activeConversationId 是对象而不是字符串:', newId)
-  }
-})
-
 onMounted(async () => {
   if (currentUser.value) {
     loadConversations()
@@ -678,6 +698,8 @@ onMounted(async () => {
 
 // 组件卸载时清理资源
 onUnmounted(() => {
+  disposed = true
+  if (reconnectTimer) clearTimeout(reconnectTimer)
   // 关闭 WebSocket 连接
   if (ws.value) {
     ws.value.close()

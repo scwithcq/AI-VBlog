@@ -21,7 +21,7 @@ CREATE TABLE `tb_user` (
   `email` varchar(100) DEFAULT NULL COMMENT '邮箱',
   `location` varchar(100) DEFAULT NULL COMMENT '地区',
   `website` varchar(200) DEFAULT NULL COMMENT '个人网站',
-  `avatar` varchar(255) DEFAULT '/uploads/default-avatar.png' COMMENT '头像URL',
+  `avatar` varchar(255) DEFAULT '/default-avatar.jpg' COMMENT '头像URL',
   `background` varchar(255) DEFAULT NULL COMMENT '背景图URL',
   `bio` text COMMENT '个人简介',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -101,6 +101,18 @@ CREATE TABLE `tb_post_like` (
   KEY `idx_post_id` (`post_id`),
   KEY `idx_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='帖子点赞表';
+
+-- 收藏与点赞是两种独立操作
+DROP TABLE IF EXISTS `tb_post_favorite`;
+CREATE TABLE `tb_post_favorite` (
+  `favorite_id` bigint NOT NULL AUTO_INCREMENT,
+  `post_id` bigint NOT NULL,
+  `user_id` bigint NOT NULL,
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`favorite_id`),
+  UNIQUE KEY `uk_post_favorite` (`post_id`, `user_id`),
+  KEY `idx_favorite_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='帖子收藏表';
 
 -- ========================================
 -- 6. 关注表 (tb_follow)
@@ -282,10 +294,10 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- ========================================
 
 -- 插入测试用户（密码为 "123456" 的加密值，需根据实际加密算法调整）
--- INSERT INTO `tb_user` (`username`, `password`, `nickname`, `bio`) 
+-- INSERT INTO `tb_user` (`username`, `password`, `nickname`, `bio`)
 -- VALUES ('testuser1', '$2a$10$encrypted_password_here', '测试用户1', '这是测试用户1的个人简介');
 
--- INSERT INTO `tb_user` (`username`, `password`, `nickname`, `bio`) 
+-- INSERT INTO `tb_user` (`username`, `password`, `nickname`, `bio`)
 -- VALUES ('testuser2', '$2a$10$encrypted_password_here', '测试用户2', '这是测试用户2的个人简介');
 
 SET FOREIGN_KEY_CHECKS = 1;

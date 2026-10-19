@@ -1,14 +1,15 @@
 <script setup>
-import { ref, watch, computed, onMounted } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/userStore'
+import { useRealtimeStore } from '../store/realtimeStore'
 import { ElInput, ElButton, ElDropdown, ElDropdownMenu, ElDropdownItem, ElAvatar, ElIcon, ElLoading } from 'element-plus'
-import { Search, User, Bell, Plus, Setting, Star, Message, HomeFilled, VideoCameraFilled, Compass } from '@element-plus/icons-vue'
+import { Search, User, Bell, Plus, Star, Message, HomeFilled, Compass } from '@element-plus/icons-vue'
 import { searchUsers, searchPosts } from '../api/search'
-import { getUnreadCount } from '../api/notification'
 
 const router = useRouter()
 const userStore = useUserStore()
+const realtimeStore = useRealtimeStore()
 const searchKeyword = ref('')
 const showSearchResults = ref(false)
 const searchLoading = ref(false)
@@ -17,7 +18,6 @@ const searchResultsData = ref({
   posts: []
 })
 const activeSearchFilter = ref('all') // all, posts, users
-const unreadNotificationCount = ref(0)
 let debounceTimer = null
 
 // 搜索功能 - 使用防抖
@@ -99,28 +99,6 @@ watch(activeSearchFilter, () => {
   }
 })
 
-// 加载未读通知数
-const loadUnreadNotifications = async () => {
-  try {
-    const result = await getUnreadCount()
-    // 兼容多种响应格式
-    unreadNotificationCount.value = result.count || result.unreadCount || result || 0
-  } catch (error) {
-    console.error('加载未读通知数失败:', error)
-    // 错误时不显示数字
-    unreadNotificationCount.value = 0
-  }
-}
-
-// 组件挂载时加载通知数
-onMounted(() => {
-  if (userStore.isLoggedIn) {
-    loadUnreadNotifications()
-    // 每隔5分钟刷新一次
-    setInterval(loadUnreadNotifications, 5 * 60 * 1000)
-  }
-})
-
 // 计算显示的搜索结果
 const displayedResults = computed(() => {
   if (activeSearchFilter.value === 'users') {
@@ -174,8 +152,6 @@ const handleCommand = (command) => {
     router.push('/message')
   } else if (command === 'favorite') {
     router.push('/favorite')
-  } else if (command === 'setting') {
-    router.push('/setting')
   } else if (command === 'logout') {
     userStore.logout()
     router.push('/login')
@@ -185,10 +161,6 @@ const handleCommand = (command) => {
 const handlePublish = () => {
   // 发布功能逻辑，这里暂时跳转到首页
   router.push('/')
-}
-
-const handleVideoClick = () => {
-  window.open('https://weibo.com/tv/home', '_blank')
 }
 
 const formatPostTime = (time) => {
@@ -214,21 +186,22 @@ const formatPostTime = (time) => {
       <!-- 左侧Logo和主要导航 -->
       <div class="header-left">
         <div class="logo" @click="router.push('/')">
-          <span class="logo-text">V-Blog</span>
+          <span class="logo-mark" aria-hidden="true">V</span>
+          <span class="logo-text">V-Blog<small>记录每个闪光瞬间</small></span>
         </div>
 
         <nav class="main-nav">
-          <div class="nav-item active" @click="router.push('/')">
+          <div class="nav-item" :class="{ active: router.currentRoute.value.path === '/' }" @click="router.push('/')">
             <el-icon>
               <HomeFilled />
             </el-icon>
             <span>首页</span>
           </div>
-          <div class="nav-item" @click="handleVideoClick">
+          <div class="nav-item" :class="{ active: router.currentRoute.value.path === '/search' }" @click="router.push('/search')">
             <el-icon>
-              <VideoCameraFilled />
+              <Compass />
             </el-icon>
-            <span>视频</span>
+            <span>发现</span>
           </div>
           <!-- <div class="nav-item">
             <el-icon>
@@ -339,8 +312,15 @@ const formatPostTime = (time) => {
         <div class="header-icon" @click="router.push('/notification')">
           <el-icon class="icon-with-badge">
             <Bell />
-            <span v-if="unreadNotificationCount > 0" class="badge">{{ unreadNotificationCount > 99 ? '99+' :
-              unreadNotificationCount }}</span>
+            <span v-if="realtimeStore.unreadNotifications > 0" class="badge">{{ realtimeStore.unreadNotifications > 99 ? '99+' :
+              realtimeStore.unreadNotifications }}</span>
+          </el-icon>
+        </div>
+
+        <div class="header-icon" @click="router.push('/message')" title="私信">
+          <el-icon class="icon-with-badge">
+            <Message />
+            <span v-if="realtimeStore.unreadMessages > 0" class="badge">{{ realtimeStore.unreadMessages > 99 ? '99+' : realtimeStore.unreadMessages }}</span>
           </el-icon>
         </div>
 
@@ -374,12 +354,6 @@ const formatPostTime = (time) => {
                 </el-icon>
                 <span>我的收藏</span>
               </el-dropdown-item>
-              <el-dropdown-item command="setting">
-                <el-icon>
-                  <Setting />
-                </el-icon>
-                <span>设置</span>
-              </el-dropdown-item>
               <el-dropdown-item command="logout" divided>
                 <span>退出登录</span>
               </el-dropdown-item>
@@ -403,22 +377,22 @@ const formatPostTime = (time) => {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: var(--glass-bg);
+  background: rgba(16, 22, 36, 0.9);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
   border-bottom: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  box-shadow: 0 10px 32px rgba(3, 7, 20, 0.22);
   transition: var(--transition-base);
 }
 
 .header-content {
-  max-width: 1280px;
+  max-width: 1420px;
   margin: 0 auto;
   padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
+  height: 72px;
   gap: 24px;
 }
 
@@ -426,7 +400,7 @@ const formatPostTime = (time) => {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 40px;
+  gap: 28px;
   flex: 0 0 auto;
 }
 
@@ -434,17 +408,33 @@ const formatPostTime = (time) => {
   cursor: pointer;
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+
+.logo-mark {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--primary-gradient);
+  box-shadow: 0 7px 18px rgba(255, 106, 94, .3);
+  font-size: 21px;
+  font-weight: 900;
+  font-style: italic;
 }
 
 .logo-text {
-  font-size: 26px;
+  display: flex;
+  flex-direction: column;
+  font-size: 22px;
   font-weight: 800;
-  background: var(--primary-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #fff;
   letter-spacing: -0.5px;
+  line-height: 1.05;
 }
+.logo-text small { margin-top: 4px; color: var(--text-secondary); font-size: 9px; font-weight: 600; letter-spacing: .05em; }
 
 /* 主要导航 */
 .main-nav {
@@ -466,13 +456,13 @@ const formatPostTime = (time) => {
 }
 
 .nav-item:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(255, 255, 255, 0.06);
   color: var(--primary-color);
 }
 
 .nav-item.active {
-  background-color: rgba(139, 92, 246, 0.2);
-  color: var(--primary-color);
+  background-color: rgba(255, 121, 100, 0.12);
+  color: #ffae96;
 }
 
 /* 中间搜索框 */
@@ -488,7 +478,7 @@ const formatPostTime = (time) => {
 
 .search-input :deep(.el-input__wrapper) {
   border-radius: 24px;
-  background-color: rgba(31, 41, 55, 0.6);
+  background-color: #242d40;
   box-shadow: none;
   padding-left: 16px;
   transition: all 0.3s;
@@ -496,8 +486,8 @@ const formatPostTime = (time) => {
 }
 
 .search-input :deep(.el-input__wrapper.is-focus) {
-  background-color: rgba(31, 41, 55, 0.8);
-  box-shadow: 0 0 0 2px var(--primary-color);
+  background-color: #2b3449;
+  box-shadow: 0 0 0 2px rgba(255, 121, 100, .28);
 }
 
 .search-icon {
@@ -541,7 +531,7 @@ const formatPostTime = (time) => {
 }
 
 .filter-item:hover {
-  background-color: rgba(139, 92, 246, 0.1);
+  background-color: rgba(255, 121, 100, 0.1);
   color: var(--primary-color);
 }
 
@@ -589,7 +579,7 @@ const formatPostTime = (time) => {
 }
 
 .result-item:hover {
-  background-color: rgba(139, 92, 246, 0.1);
+  background-color: rgba(255, 121, 100, 0.1);
 }
 
 .result-info {
@@ -662,14 +652,14 @@ const formatPostTime = (time) => {
 }
 
 .view-all:hover {
-  background-color: rgba(139, 92, 246, 0.1);
+  background-color: rgba(255, 121, 100, 0.1);
 }
 
 /* 右侧用户功能区 */
 .header-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
   flex: 0 0 auto;
 }
 
@@ -680,13 +670,13 @@ const formatPostTime = (time) => {
   padding: 8px 24px;
   background: var(--primary-gradient);
   border: none;
-  box-shadow: 0 4px 12px rgba(255, 154, 158, 0.4);
+  box-shadow: 0 7px 16px rgba(255, 104, 93, 0.25);
   transition: all 0.3s;
 }
 
 .publish-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(255, 154, 158, 0.5);
+  box-shadow: 0 9px 20px rgba(255, 104, 93, 0.34);
 }
 
 /* 头部图标 */
@@ -703,7 +693,7 @@ const formatPostTime = (time) => {
 }
 
 .header-icon:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(255, 255, 255, 0.07);
   color: var(--primary-color);
 }
 
@@ -741,7 +731,7 @@ const formatPostTime = (time) => {
 }
 
 .user-menu:hover {
-  background-color: rgba(139, 92, 246, 0.15);
+  background-color: rgba(255, 121, 100, 0.1);
   border-color: var(--glass-border);
 }
 
@@ -816,5 +806,9 @@ const formatPostTime = (time) => {
   .username {
     display: none;
   }
+  .logo-text { display: none; }
+  .header-content { height: 62px; }
+  .header-right { gap: 4px; }
+  .header-icon { padding: 7px; }
 }
 </style>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vblog.mapper.PostFavoriteMapper">
+    <insert id="add">
+        INSERT IGNORE INTO tb_post_favorite (post_id, user_id) VALUES (#{postId}, #{userId})
+    </insert>
+
+    <delete id="remove">
+        DELETE FROM tb_post_favorite WHERE post_id = #{postId} AND user_id = #{userId}
+    </delete>
+
+    <select id="exists" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM tb_post_favorite WHERE post_id = #{postId} AND user_id = #{userId})
+    </select>
+
+    <select id="countByPostId" resultType="long">
+        SELECT COUNT(*) FROM tb_post_favorite WHERE post_id = #{postId}
+    </select>
+
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*) FROM tb_post_favorite f JOIN tb_post p ON p.post_id = f.post_id
+        WHERE f.user_id = #{userId}
+    </select>
+
+    <select id="selectUserFavorites" resultType="com.vblog.entity.Post">
+        SELECT p.* FROM tb_post_favorite f JOIN tb_post p ON p.post_id = f.post_id
+        WHERE f.user_id = #{userId}
+        ORDER BY f.create_time DESC, f.favorite_id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+</mapper>

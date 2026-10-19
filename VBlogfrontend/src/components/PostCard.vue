@@ -4,7 +4,9 @@ import { useRouter } from 'vue-router'
 import { ElCard, ElAvatar, ElButton, ElImage, ElDropdown, ElDropdownMenu, ElDropdownItem, ElMessageBox } from 'element-plus'
 import { getSourcePost, deletePost } from '../api/post'
 import { getUserInfo } from '../api/user'
-import { getLikeStatus, likePost, unlikePost } from '../api/like'
+import { likePost, unlikePost } from '../api/like'
+import { favoritePost, unfavoritePost } from '../api/favorite'
+import { getPostInteractionStatus } from '../api/postInteraction'
 import { useUserStore } from '../store/userStore'
 import { ElMessage } from 'element-plus'
 import { Share, ChatDotRound, Star, StarFilled, MoreFilled, Warning, Delete } from '@element-plus/icons-vue'
@@ -40,8 +42,13 @@ const showComments = ref(false)
 const isLiked = ref(props.post.isLiked || false)
 const likeCount = ref(props.post.likeCount || 0)
 const liking = ref(false)
+const isFavorited = ref(false)
+const favoriteCount = ref(0)
+const favoritePending = ref(false)
+let likeVersion = 0
+let favoriteVersion = 0
 
-const emit = defineEmits(['reposted', 'commented', 'liked', 'deleted'])
+const emit = defineEmits(['reposted', 'commented', 'liked', 'favorited', 'deleted'])
 
 const handleRepost = () => {
   repostDialogVisible.value = true
@@ -67,6 +74,7 @@ const handleLike = async () => {
   if (liking.value) return
 
   liking.value = true
+  likeVersion++
   try {
     if (isLiked.value) {
       // 取消点赞
@@ -100,29 +108,48 @@ const handleLike = async () => {
   }
 }
 
-const loadLikeStatus = async () => {
+const loadInteractionStatus = async () => {
   if (!userStore.isLoggedIn) {
-    // 未登录时，使用post对象中的点赞数，但不显示点赞状态
     likeCount.value = props.post.likeCount || 0
     isLiked.value = false
     return
   }
 
   try {
-    const result = await getLikeStatus(props.post.postId)
-    isLiked.value = result.isLiked || false
-    // 使用API返回的点赞数，确保使用当前帖子的真实点赞数
-    if (result.likeCount !== undefined) {
-      likeCount.value = result.likeCount
-    } else {
-      // 如果API没有返回点赞数，保留post对象中的初始值
-      likeCount.value = props.post.likeCount || 0
+    const postId = props.post.postId
+    const userId = userStore.userId
+    const initialLikeVersion = likeVersion
+    const initialFavoriteVersion = favoriteVersion
+    const result = await getPostInteractionStatus(postId)
+    if (postId !== props.post.postId || userId !== userStore.userId || !result) return
+    if (initialLikeVersion === likeVersion) {
+      isLiked.value = Boolean(result.liked)
+      likeCount.value = Number(result.likeCount) || 0
+    }
+    if (initialFavoriteVersion === favoriteVersion) {
+      isFavorited.value = Boolean(result.favorited)
+      favoriteCount.value = Number(result.favoriteCount) || 0
     }
   } catch (error) {
-    console.error(`Failed to load like status for post ${props.post.postId}:`, error)
-    // 加载失败时，使用post对象中的初始数据
-    likeCount.value = props.post.likeCount || 0
-    isLiked.value = false
+    console.error(`Failed to load interaction status for post ${props.post.postId}:`, error)
+  }
+}
+
+const handleFavorite = async () => {
+  if (favoritePending.value) return
+  favoritePending.value = true
+  favoriteVersion++
+  try {
+    const result = isFavorited.value
+      ? await unfavoritePost(props.post.postId)
+      : await favoritePost(props.post.postId)
+    isFavorited.value = Boolean(result.isFavorited)
+    favoriteCount.value = Number(result.favoriteCount) || 0
+    emit('favorited', { postId: props.post.postId, isFavorited: isFavorited.value })
+  } catch (error) {
+    ElMessage.error('收藏操作失败')
+  } finally {
+    favoritePending.value = false
   }
 }
 
@@ -200,7 +227,9 @@ const sourceImages = computed(() => {
 const parseContent = (content) => {
   if (!content) return ''
   // Parse topics and make them clickable
-  return content.replace(/#([^#]+)#/g, (match, topicName) => {
+  const safe = String(content).replace(/&(?!(?:amp|lt|gt|quot|#39|#x2F);)/g, '&amp;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+  return safe.replace(/#([^#]+)#/g, (match, topicName) => {
     return `<span class="topic-link" data-topic="${topicName}">${match}</span>`
   })
 }
@@ -251,18 +280,19 @@ onMounted(() => {
   if (props.post.sourceId) {
     loadSourcePost()
   }
-  loadLikeStatus()
+  loadInteractionStatus()
 })
 </script>
 
 <template>
   <div class="post-card glass-card">
     <div class="post-header">
-      <el-avatar :src="user?.avatar || '/default-avatar.png'" :size="48" @click="goToProfile(post.userId)"
+      <el-avatar :src="user?.avatar || '/default-avatar.jpg'" :size="48" @click="goToProfile(post.userId)"
         class="user-avatar" />
       <div class="post-info">
         <div class="username" @click="goToProfile(post.userId)">
-          {{ user?.username || '未知用户' }}
+          {{ user?.nickname || user?.username || '未知用户' }}
+          <small v-if="user?.username?.startsWith('demo_')" style="color: var(--v-accent, #8b7cf8); margin-left: 6px; font-size: 11px">虚构演示</small>
         </div>
         <div class="time">{{ formatTime(post.createTime) }}</div>
       </div>
@@ -283,11 +313,6 @@ onMounted(() => {
           </el-dropdown-menu>
         </template>
       </el-dropdown>
-      <el-button v-else text circle class="more-btn" disabled>
-        <el-icon>
-          <MoreFilled />
-        </el-icon>
-      </el-button>
     </div>
 
     <div class="post-content">
@@ -342,24 +367,28 @@ onMounted(() => {
     </div>
 
     <div class="post-actions">
-      <div class="action-item" @click="handleRepost">
+      <button type="button" class="action-item" @click="handleRepost">
         <el-icon>
           <Share />
         </el-icon>
         <span>转发</span>
-      </div>
-      <div class="action-item" @click="handleComment">
+      </button>
+      <button type="button" class="action-item" :aria-expanded="showComments" @click="handleComment">
         <el-icon>
           <ChatDotRound />
         </el-icon>
         <span>{{ showComments ? '收起' : '评论' }}</span>
-      </div>
-      <div class="action-item" :class="{ active: isLiked }" @click="handleLike">
+      </button>
+      <button type="button" class="action-item favorite-action" :class="{ active: isFavorited }" :aria-pressed="isFavorited" :disabled="favoritePending" @click="handleFavorite">
         <el-icon>
-          <component :is="isLiked ? 'StarFilled' : 'Star'" />
+          <component :is="isFavorited ? 'StarFilled' : 'Star'" />
         </el-icon>
-        <span>{{ likeCount > 0 ? likeCount : '赞' }}</span>
-      </div>
+        <span>收藏 {{ favoriteCount }}</span>
+      </button>
+      <button type="button" class="action-item like-action" :class="{ active: isLiked }" :aria-pressed="isLiked" :disabled="liking" @click="handleLike">
+        <span class="like-heart" aria-hidden="true">♥</span>
+        <span>点赞 {{ likeCount }}</span>
+      </button>
     </div>
 
     <RepostDialog v-model:visible="repostDialogVisible" :post="post" :user="user" @reposted="handleReposted" />
@@ -372,14 +401,16 @@ onMounted(() => {
 
 <style scoped>
 .post-card {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
+  padding: 22px 24px 16px;
+  border-radius: 20px;
 }
 
 .post-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 17px;
 }
 
 .post-info {
@@ -387,25 +418,26 @@ onMounted(() => {
 }
 
 .username {
-  font-weight: 500;
+  font-weight: 700;
+  font-size: 15px;
   color: #f3f4f6;
   margin-bottom: 4px;
   cursor: pointer;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  text-shadow: none;
 }
 
 .username:hover {
-  color: #a78bfa;
+  color: #ffad94;
 }
 
 .user-avatar {
   cursor: pointer;
+  border: 2px solid rgba(255, 175, 145, 0.28);
 }
 
 .time {
   font-size: 12px;
-  color: #d1d5db;
-  opacity: 0.9;
+  color: var(--text-secondary);
 }
 
 .post-content {
@@ -417,12 +449,12 @@ onMounted(() => {
   line-height: 1.7;
   word-break: break-word;
   white-space: pre-wrap;
-  color: #f9fafb;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  color: var(--text-main);
+  text-shadow: none;
 }
 
 .text-content :deep(.topic-link) {
-  color: #a78bfa;
+  color: #ffb293;
   cursor: pointer;
   transition: opacity 0.2s ease;
   text-shadow: 0 0 10px rgba(167, 139, 250, 0.3);
@@ -499,10 +531,40 @@ onMounted(() => {
 }
 
 .post-actions {
-  display: flex;
-  gap: 24px;
-  padding-top: 12px;
-  border-top: 1px solid #ebeef5;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.action-item {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 5px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: none;
+}
+.action-item:hover { background: rgba(255, 255, 255, 0.055); color: var(--text-main); }
+.action-item.active { color: #ffae92; background: rgba(255, 121, 100, 0.1); }
+.action-item:disabled { opacity: .6; cursor: wait; }
+.action-item .el-icon { font-size: 17px; }
+.like-action.active .like-heart { color: #ff667f; }
+.favorite-action.active .el-icon { color: #ffc47a; }
+
+.like-heart {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .repost-indicator {
@@ -520,7 +582,7 @@ onMounted(() => {
 }
 
 .source-post-container {
-  background-color: rgba(31, 41, 55, 0.5);
+  background-color: rgba(15, 21, 34, 0.5);
   border-radius: var(--border-radius-base);
   padding: 16px;
   margin-top: 12px;
@@ -531,7 +593,7 @@ onMounted(() => {
 }
 
 .source-post-container:hover {
-  background-color: rgba(31, 41, 55, 0.7);
+  background-color: rgba(19, 25, 39, 0.8);
   border-color: rgba(139, 92, 246, 0.3);
 }
 

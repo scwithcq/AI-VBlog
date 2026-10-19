@@ -13,6 +13,7 @@ const props = defineProps({
 
 const userStore = useUserStore()
 const isFollowing = ref(false)
+const isFriend = ref(false)
 const loading = ref(false)
 const checking = ref(false)
 const isHovering = ref(false)
@@ -34,6 +35,7 @@ const buttonText = computed(() => {
   if (loading.value || checking.value) {
     return isFollowing.value ? '已关注' : '关注'
   }
+  if (isFriend.value) return '好友·互相关注'
   if (isFollowing.value && isHovering.value) {
     return '取消关注'
   }
@@ -61,6 +63,7 @@ const loadFollowStatus = async () => {
       isFollowing.value = result
     } else {
       isFollowing.value = result.isFollowing || false
+      isFriend.value = result.isFriend || false
     }
   } catch (error) {
     console.error('加载关注状态失败:', error)
@@ -117,7 +120,7 @@ onMounted(() => {
 <template>
   <el-button v-if="shouldShowButton" :type="isFollowing ? 'default' : 'primary'"
     :class="{ 'follow-button': true, 'is-following': isFollowing }" size="small" :loading="loading || checking"
-    @click="handleFollow" @mouseenter="onHover" @mouseleave="onLeave">
+    :disabled="isFriend" @click="handleFollow" @mouseenter="onHover" @mouseleave="onLeave">
     {{ buttonText }}
   </el-button>
 </template>

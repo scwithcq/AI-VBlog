@@ -14,13 +14,51 @@ import java.util.stream.Collectors;
 
 /**
  * Global Exception Handler
- * 
+ *
  * @author V-Blog Team
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    // Seeking a video or leaving a page can close the media response mid-stream.
+    @ExceptionHandler({org.apache.catalina.connector.ClientAbortException.class,
+            org.springframework.web.context.request.async.AsyncRequestNotUsableException.class})
+    public void handleDisconnectedClient(Exception e) {
+        log.debug("Client closed the response stream: {}", e.getMessage());
+    }
+
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public Result<?> handleConstraintViolation(jakarta.validation.ConstraintViolationException e) {
+        return Result.badRequest(e.getConstraintViolations().stream()
+                .map(v -> v.getMessage()).collect(Collectors.joining(", ")));
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public Result<?> handleLargeUpload(Exception e) {
+        return Result.badRequest("上传文件超过大小限制");
+    }
+
+    @ExceptionHandler(java.io.IOException.class)
+    public Result<?> handleUploadFailure(java.io.IOException e) {
+        return Result.badRequest("文件无效或无法保存，请检查类型与大小");
+    }
+
+    @ExceptionHandler(org.springframework.dao.DuplicateKeyException.class)
+    public Result<?> handleDuplicate(Exception e) {
+        return Result.badRequest("数据已存在，请勿重复提交");
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public Result<?> handleInvalidArgument(IllegalArgumentException e) {
+        return Result.badRequest(e.getMessage());
+    }
+
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    public Result<?> handleTypeMismatch(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException e) {
+        return Result.badRequest("请求参数格式不正确: " + e.getName());
+    }
 
     /**
      * Handle validation exceptions
@@ -59,7 +97,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public Result<?> handleRuntimeException(RuntimeException e) {
         log.error("运行时异常: ", e);
-        return Result.serverError(e.getMessage());
+        return Result.serverError("服务器内部错误");
     }
 
     /**

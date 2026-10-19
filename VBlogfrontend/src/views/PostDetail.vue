@@ -5,12 +5,13 @@ import { useUserStore } from '../store/userStore'
 import { getPostById, repost, deletePost } from '../api/post'
 import { getUserInfo } from '../api/user'
 import { getLikeStatus, likePost, unlikePost } from '../api/like'
-import { ElCard, ElButton, ElAvatar, ElMessage, ElMessageBox, ElImage, ElIcon } from 'element-plus'
-import { Heart, MessageCircle, Repeat2, Share, Delete, ArrowLeft } from '@element-plus/icons-vue'
+import { getFavoriteStatus, favoritePost, unfavoritePost } from '../api/favorite'
+import { ElCard, ElButton, ElAvatar, ElMessage, ElMessageBox, ElImage, ElIcon, ElEmpty } from 'element-plus'
+import { Star, StarFilled, ChatDotRound, RefreshRight, Share, Delete, ArrowLeft, MoreFilled } from '@element-plus/icons-vue'
 import CommentList from '../components/CommentList.vue'
 import RepostDialog from '../components/RepostDialog.vue'
 import Layout from '../components/Layout.vue'
-import { getImageUrl } from '../utils/image'
+import { getImageUrl, parseImages } from '../utils/image'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,9 +24,13 @@ const loading = ref(false)
 const isLiked = ref(false)
 const likeCount = ref(0)
 const liking = ref(false)
+const isFavorited = ref(false)
+const favoriteCount = ref(0)
+const favoritePending = ref(false)
 const showRepostDialog = ref(false)
 
 const isOwnPost = computed(() => post.value?.userId === userStore.userId)
+const postImages = computed(() => parseImages(post.value?.images))
 
 const loadPostData = async () => {
   loading.value = true
@@ -41,24 +46,44 @@ const loadPostData = async () => {
 
     // 加载点赞状态
     if (userStore.isLoggedIn) {
-      const likeData = await getLikeStatus(postId.value)
+      const [likeData, favoriteData] = await Promise.all([
+        getLikeStatus(postId.value), getFavoriteStatus(postId.value)
+      ])
       // 使用正确的字段名 isLiked
       isLiked.value = likeData.isLiked || false
       // 优先使用API返回的点赞数
       likeCount.value = likeData.likeCount !== undefined ? likeData.likeCount : (postData.likeCount || 0)
+      isFavorited.value = Boolean(favoriteData.isFavorited)
+      favoriteCount.value = Number(favoriteData.favoriteCount) || 0
     } else {
       likeCount.value = postData.likeCount || 0
       isLiked.value = false
     }
   } catch (error) {
-    ElMessage.error('加载帖子失败')
-    router.back()
+    console.error('加载帖子详情失败:', error)
   } finally {
     loading.value = false
   }
 }
 
+const handleFavorite = async () => {
+  if (favoritePending.value) return
+  favoritePending.value = true
+  try {
+    const result = isFavorited.value
+      ? await unfavoritePost(postId.value)
+      : await favoritePost(postId.value)
+    isFavorited.value = Boolean(result.isFavorited)
+    favoriteCount.value = Number(result.favoriteCount) || 0
+  } catch (error) {
+    ElMessage.error('收藏操作失败')
+  } finally {
+    favoritePending.value = false
+  }
+}
+
 const handleLike = async () => {
+  if (liking.value) return
   if (!userStore.isLoggedIn) {
     ElMessage.info('请先登录')
     router.push('/login')
@@ -150,7 +175,10 @@ onMounted(() => {
       </div>
 
       <!-- 帖子内容卡片 -->
-      <div class="post-content-card glass-card">
+      <el-empty v-if="!loading && !post" description="帖子不存在或暂时无法访问">
+        <el-button @click="router.push('/')">返回首页</el-button>
+      </el-empty>
+      <div v-if="post" class="post-content-card glass-card">
         <div class="post-header">
           <div class="author-info" @click="router.push(`/profile/${author?.userId}`)" v-if="author">
             <el-avatar :src="author.avatar" :size="48" class="author-avatar" />
@@ -182,9 +210,9 @@ onMounted(() => {
           <p v-if="post?.content" class="post-text">{{ post.content }}</p>
 
           <!-- 图片展示 -->
-          <div v-if="post?.images && post.images.length > 0" class="post-images"
-            :class="getImageGridClass(post.images.length)">
-            <el-image v-for="(image, index) in post.images" :key="index" :src="image" :preview-src-list="post.images"
+          <div v-if="postImages.length > 0" class="post-images"
+            :class="getImageGridClass(postImages.length)">
+            <el-image v-for="(image, index) in postImages" :key="index" :src="image" :preview-src-list="postImages"
               :initial-index="index" fit="cover" class="post-image" />
           </div>
 
@@ -210,28 +238,36 @@ onMounted(() => {
             <span class="label">点赞</span>
             <span class="value">{{ likeCount }}</span>
           </div>
+          <div class="stat-item">
+            <span class="label">收藏</span>
+            <span class="value">{{ favoriteCount }}</span>
+          </div>
         </div>
 
         <div class="post-actions">
           <el-button class="action-btn" @click="handleRepost">
             <el-icon>
-              <Repeat2 />
+              <RefreshRight />
             </el-icon>
             <span>转发</span>
           </el-button>
           <el-button class="action-btn">
             <el-icon>
-              <MessageCircle />
+              <ChatDotRound />
             </el-icon>
             <span>评论</span>
           </el-button>
-          <el-button class="action-btn" :class="{ active: isLiked }" @click="handleLike" :loading="liking">
-            <el-icon v-if="isLiked">
-              <HeartFilled />
+          <el-button class="action-btn" :class="{ active: isFavorited }" @click="handleFavorite" :loading="favoritePending">
+            <el-icon v-if="isFavorited">
+              <StarFilled />
             </el-icon>
             <el-icon v-else>
-              <Heart />
+              <Star />
             </el-icon>
+            <span>{{ isFavorited ? '已收藏' : '收藏' }}</span>
+          </el-button>
+          <el-button class="action-btn" :class="{ active: isLiked }" @click="handleLike" :loading="liking">
+            <span aria-hidden="true">♥</span>
             <span>{{ isLiked ? '已赞' : '点赞' }}</span>
           </el-button>
           <el-button class="action-btn">
@@ -244,13 +280,13 @@ onMounted(() => {
       </div>
 
       <!-- 评论列表 -->
-      <div class="comments-section glass-card">
+      <div v-if="post" class="comments-section glass-card">
         <h3 class="section-title">评论</h3>
         <CommentList :post-id="postId" />
       </div>
 
       <!-- 转发对话框 -->
-      <RepostDialog v-model="showRepostDialog" :source-post="post" @reposted="loadPostData" />
+      <RepostDialog v-model:visible="showRepostDialog" :post="post || {}" :user="author" @reposted="loadPostData" />
     </div>
   </Layout>
 </template>

@@ -19,7 +19,7 @@ import java.util.Map;
 
 /**
  * 用户服务实现类
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -53,10 +53,12 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public User register(String username, String password) {
+        if (username == null || notValidUsername(username)) throw new IllegalArgumentException("用户名需3至50位，仅支持字母、数字、下划线或中文");
+        com.vblog.utils.InputSafety.password(password);
         // 检查用户名是否已存在
         User existingUser = userMapper.selectByUsername(username);
         if (existingUser != null) {
-            throw new RuntimeException("用户名已存在");
+            throw new IllegalArgumentException("用户名已存在");
         }
 
         // 过滤XSS
@@ -66,7 +68,7 @@ public class UserServiceImpl implements UserService {
         User user = new User();
         user.setUsername(username);
         user.setPassword(passwordUtil.encrypt(password));
-        user.setAvatar("/uploads/default-avatar.png"); // 默认头像
+        user.setAvatar("/default-avatar.jpg");
         user.setBio("");
 
         userMapper.insert(user);
@@ -79,20 +81,21 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User login(String username, String password) {
+        if (username == null || password == null || username.length() > 50 || password.length() > 256) throw new IllegalArgumentException("用户名或密码错误");
         // 根据用户名查找用户
         User user = userMapper.selectByUsername(username);
 
-        if (user == null) {
-            throw new RuntimeException("用户名或密码错误");
+        if (user == null || user.getUsername().startsWith("demo_")) {
+            throw new IllegalArgumentException("用户名或密码错误");
         }
 
         // 验证密码
         if (!passwordUtil.verify(password, user.getPassword())) {
-            throw new RuntimeException("用户名或密码错误");
+            throw new IllegalArgumentException("用户名或密码错误");
         }
 
         // 返回前清除密码
-        user.setPassword(null);
+        user = publicUser(user);
         log.info("User logged in: {}", username);
         return user;
     }
@@ -101,7 +104,7 @@ public class UserServiceImpl implements UserService {
     public User getUserById(Long userId) {
         User user = userMapper.selectById(userId);
         if (user != null) {
-            user.setPassword(null); // 永远不返回密码
+            user = publicUser(user); // Do not mutate MyBatis cached entities.
         }
         return user;
     }
@@ -110,7 +113,7 @@ public class UserServiceImpl implements UserService {
     public User getUserByUsername(String username) {
         User user = userMapper.selectByUsername(username);
         if (user != null) {
-            user.setPassword(null); // 永远不返回密码
+            user = publicUser(user); // Do not mutate MyBatis cached entities.
         }
         return user;
     }
@@ -118,6 +121,16 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public User updateUserInfo(User user) {
+        user.setUsername(null); // Account identity cannot be changed through profile mass assignment.
+        com.vblog.utils.InputSafety.length(user.getNickname(), 50);
+        com.vblog.utils.InputSafety.length(user.getBio(), 1000);
+        com.vblog.utils.InputSafety.length(user.getPhone(), 20);
+        com.vblog.utils.InputSafety.length(user.getEmail(), 100);
+        com.vblog.utils.InputSafety.length(user.getLocation(), 100);
+        com.vblog.utils.InputSafety.website(user.getWebsite());
+        com.vblog.utils.InputSafety.media(user.getAvatar());
+        com.vblog.utils.InputSafety.media(user.getBackground());
+        if (user.getGender() != null && (user.getGender() < 0 || user.getGender() > 2)) throw new IllegalArgumentException("性别参数无效");
         // 过滤个人简介中的XSS
         if (user.getBio() != null) {
             user.setBio(xssUtil.filter(user.getBio()));
@@ -136,23 +149,23 @@ public class UserServiceImpl implements UserService {
         Long followerCount = followService.getFollowerCount(userId);
         Long followingCount = followService.getFollowingCount(userId);
 
-        // 获取帖子数量（使用getUserPosts获取总数）
-        Long postCount = postService.getUserPosts(userId, 1, 1).getTotal();
+        Long postCount = postService.countUserPosts(userId);
 
         return new UserStats(followerCount, followingCount, postCount);
     }
 
     @Override
     public boolean changePassword(Long userId, String oldPassword, String newPassword) {
+        com.vblog.utils.InputSafety.password(newPassword);
         // 获取用户信息
         User user = userMapper.selectById(userId);
         if (user == null) {
-            throw new RuntimeException("用户不存在");
+            throw new IllegalArgumentException("用户不存在");
         }
 
         // 验证旧密码
         if (!passwordUtil.verify(oldPassword, user.getPassword())) {
-            throw new RuntimeException("旧密码错误");
+            throw new IllegalArgumentException("旧密码错误");
         }
 
         // 更新密码
@@ -186,8 +199,20 @@ public class UserServiceImpl implements UserService {
     public List<User> getAllUsers() {
         List<User> users = userMapper.selectAll();
         // 清除所有用户的密码信息
-        users.forEach(user -> user.setPassword(null));
+        users = users.stream().map(this::publicUser).toList();
         log.info("Retrieved all users, count: {}", users.size());
         return users;
+    }
+    private boolean notValidUsername(String value) {
+        return !value.matches("[a-zA-Z0-9_\\p{IsHan}]{3,50}") || value.toLowerCase(java.util.Locale.ROOT).startsWith("demo_");
+    }
+
+    private User publicUser(User source) {
+        User copy = new User();
+        org.springframework.beans.BeanUtils.copyProperties(source, copy);
+        copy.setPassword(null);
+        copy.setPhone(null);
+        copy.setEmail(null);
+        return copy;
     }
 }

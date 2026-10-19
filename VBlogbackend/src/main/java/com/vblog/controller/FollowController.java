@@ -17,7 +17,7 @@ import java.util.Map;
 
 /**
  * Follow Controller
- * 
+ *
  * @author V-Blog Team
  */
 @Slf4j
@@ -71,7 +71,8 @@ public class FollowController extends BaseController {
         result.put("followerCount", followerCount);
 
         if (!unfollowed) {
-            return Result.error(40001, "没有关注该用户");
+            return Result.error(40001, followService.isMutualFriend(followerId, userId)
+                    ? "好友默认互相关注，请先解除好友关系" : "没有关注该用户");
         }
 
         return Result.success("取消关注成功", result);
@@ -90,6 +91,7 @@ public class FollowController extends BaseController {
 
         Map<String, Object> result = new HashMap<>();
         result.put("isFollowing", isFollowing);
+        result.put("isFriend", followService.isMutualFriend(followerId, userId));
 
         return Result.success(result);
     }
@@ -100,8 +102,8 @@ public class FollowController extends BaseController {
     @GetMapping("/{userId}/followers")
     public Result<Page<User>> getFollowers(
             @PathVariable @NotNull Long userId,
-            @RequestParam(defaultValue = "1") @Min(1) int page,
-            @RequestParam(defaultValue = "10") @Min(1) int size) {
+            @RequestParam(defaultValue = "1") @Min(1) @jakarta.validation.constraints.Max(100000) int page,
+            @RequestParam(defaultValue = "10") @Min(1) @jakarta.validation.constraints.Max(100) int size) {
 
         Page<User> followers = followService.getFollowers(userId, page, size);
         return Result.success(followers);
@@ -113,8 +115,8 @@ public class FollowController extends BaseController {
     @GetMapping("/{userId}/following")
     public Result<Page<User>> getFollowing(
             @PathVariable @NotNull Long userId,
-            @RequestParam(defaultValue = "1") @Min(1) int page,
-            @RequestParam(defaultValue = "10") @Min(1) int size) {
+            @RequestParam(defaultValue = "1") @Min(1) @jakarta.validation.constraints.Max(100000) int page,
+            @RequestParam(defaultValue = "10") @Min(1) @jakarta.validation.constraints.Max(100) int size) {
 
         Page<User> following = followService.getFollowing(userId, page, size);
         return Result.success(following);

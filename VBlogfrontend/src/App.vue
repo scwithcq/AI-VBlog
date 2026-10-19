@@ -1,17 +1,25 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import { useUserStore } from './store/userStore'
+import { useRealtimeStore } from './store/realtimeStore'
 
 const userStore = useUserStore()
+const realtimeStore = useRealtimeStore()
+
+watch(() => [userStore.userId, userStore.token], ([userId, token]) => {
+  realtimeStore.start(userId, token)
+}, { immediate: true })
 
 // 应用启动时初始化用户信息
 onMounted(() => {
   userStore.initUserInfo()
 })
+
+onUnmounted(() => realtimeStore.stop())
 </script>
 
 <template>
-  <router-view />
+  <router-view :key="$route.path" />
 </template>
 
 <style>

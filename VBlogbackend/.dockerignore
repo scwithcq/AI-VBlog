@@ -1,0 +1,7 @@
+target
+.venv
+.idea
+uploads
+src/main/resources/vblog_upload
+*.log
+*.md

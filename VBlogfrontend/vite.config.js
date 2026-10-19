@@ -23,8 +23,14 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        ws: true,
         // 后端API本身包含/api前缀，所以不需要重写路径
         rewrite: (path) => path
+      },
+      '/uploads': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        rewrite: (path) => `/api${path}`
       }
     }
   }

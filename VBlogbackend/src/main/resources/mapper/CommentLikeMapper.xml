@@ -47,7 +47,7 @@
 
     <!-- Insert -->
     <insert id="insert" useGeneratedKeys="true" keyProperty="likeId">
-        INSERT INTO tb_comment_like (comment_id, user_id, create_time, update_time)
+        INSERT IGNORE INTO tb_comment_like (comment_id, user_id, create_time, update_time)
         VALUES (#{commentId}, #{userId}, NOW(), NOW())
     </insert>
 
@@ -58,6 +58,10 @@
     </delete>
 
     <!-- Delete by map -->
+    <delete id="deleteByCommentId">
+        DELETE FROM tb_comment_like WHERE comment_id = #{commentId}
+    </delete>
+
     <delete id="deleteByMap">
         DELETE FROM tb_comment_like
         <where>

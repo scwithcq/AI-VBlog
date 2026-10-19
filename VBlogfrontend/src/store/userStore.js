@@ -1,35 +1,42 @@
+import { normalizeMediaFields, getImageUrl } from '../utils/image'
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getCurrentUserInfo } from '../api/user'
 
 export const useUserStore = defineStore('user', () => {
-  // State - 从 localStorage 恢复
-  const token = ref(localStorage.getItem('token') || '')
-  const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || 'null'))
+  // 登录状态按标签页隔离，允许同一浏览器的不同标签页登录不同用户。
+  const token = ref(sessionStorage.getItem('token') || '')
+  let savedUserInfo = null
+  try {
+    savedUserInfo = JSON.parse(sessionStorage.getItem('userInfo') || 'null')
+  } catch {
+    sessionStorage.removeItem('userInfo')
+  }
+  const userInfo = ref(normalizeMediaFields(savedUserInfo))
   const isInitialized = ref(false)
 
   // Computed
   const isLoggedIn = computed(() => !!token.value)
   const userId = computed(() => userInfo.value?.userId)
   const username = computed(() => userInfo.value?.username)
-  const avatar = computed(() => userInfo.value?.avatar)
+  const avatar = computed(() => getImageUrl(userInfo.value?.avatar) || '/default-avatar.jpg')
 
   // Actions
   function setToken(newToken) {
     token.value = newToken
     if (newToken) {
-      localStorage.setItem('token', newToken)
+      sessionStorage.setItem('token', newToken)
     } else {
-      localStorage.removeItem('token')
+      sessionStorage.removeItem('token')
     }
   }
 
   function setUserInfo(info) {
     userInfo.value = info
     if (info) {
-      localStorage.setItem('userInfo', JSON.stringify(info))
+      sessionStorage.setItem('userInfo', JSON.stringify(info))
     } else {
-      localStorage.removeItem('userInfo')
+      sessionStorage.removeItem('userInfo')
     }
   }
 
@@ -38,8 +45,8 @@ export const useUserStore = defineStore('user', () => {
     if (isInitialized.value) return
 
     try {
-      // 如果有 token 但没有 userInfo，自动获取
-      if (token.value && !userInfo.value) {
+      // 每次打开应用都同步服务端资料，避免头像等信息停留在旧缓存。
+      if (token.value) {
         const info = await getCurrentUserInfo()
         setUserInfo(info)
       }
@@ -54,7 +61,7 @@ export const useUserStore = defineStore('user', () => {
   // 更新用户信息（不清除 token）
   function updateUserInfo(newInfo) {
     userInfo.value = { ...userInfo.value, ...newInfo }
-    localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
+    sessionStorage.setItem('userInfo', JSON.stringify(userInfo.value))
   }
 
   // 退出登录
@@ -69,13 +76,13 @@ export const useUserStore = defineStore('user', () => {
     token,
     userInfo,
     isInitialized,
-    
+
     // Computed
     isLoggedIn,
     userId,
     username,
     avatar,
-    
+
     // Methods
     setToken,
     setUserInfo,
@@ -84,4 +91,3 @@ export const useUserStore = defineStore('user', () => {
     logout
   }
 })
-

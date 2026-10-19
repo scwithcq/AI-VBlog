@@ -3,6 +3,11 @@ node_modules/
 dist/
 .env
 .env.*
+!.env.example
+
+# Deployment data and secrets
+data/
+private/
 
 # ===== 后端 =====
 target/
@@ -16,3 +21,9 @@ target/
 # ===== OS =====
 .DS_Store
 Thumbs.db
+
+# Private credentials and local tool output
+*.pem
+*.key
+__pycache__/
+*.pyc

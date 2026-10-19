@@ -22,7 +22,7 @@ import java.util.List;
 
 /**
  * 消息服务实现类
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -78,10 +78,7 @@ public class MessageServiceImpl implements MessageService {
     // }
 
     // 通过WebSocket实时推送消息
-    if (webSocketHandler.isUserOnline(toUserId)) {
-      String wsMessage = createWebSocketMessage("new_message", message);
-      webSocketHandler.sendMessage(toUserId, wsMessage);
-    }
+    webSocketHandler.sendEventAfterCommit(toUserId, "new_message", message);
 
     log.info("用户 {} 向用户 {} 发送消息", fromUserId, toUserId);
     return message;
@@ -90,6 +87,7 @@ public class MessageServiceImpl implements MessageService {
   @Override
   public com.vblog.common.Page<Message> getConversationMessages(String conversationId, Long userId, int page,
       int size) {
+    requireFriendConversation(conversationId, userId);
     Page<Message> mybatisPage = new Page<>(page, size);
     Page<Message> result = messageMapper.selectConversationMessages(mybatisPage, conversationId, userId);
 
@@ -119,8 +117,9 @@ public class MessageServiceImpl implements MessageService {
       message.setStatus(1);
       messageMapper.updateById(message);
 
-      // 更新会话未读数
-      conversationMapper.clearUnreadCount(message.getConversationId(), userId);
+      // 单条已读后保留同一会话中其他消息的未读数。
+      Integer remaining = messageMapper.selectConversationUnreadCount(message.getConversationId(), userId);
+      conversationMapper.setUnreadCount(message.getConversationId(), userId, remaining == null ? 0 : remaining);
     }
 
     return true;
@@ -129,6 +128,7 @@ public class MessageServiceImpl implements MessageService {
   @Override
   @Transactional
   public boolean markConversationAsRead(String conversationId, Long userId) {
+    requireFriendConversation(conversationId, userId);
     // 批量更新消息状态
     int count = messageMapper.batchUpdateMessageStatus(conversationId, userId, 1);
 
@@ -153,8 +153,8 @@ public class MessageServiceImpl implements MessageService {
     }
 
     // 检查撤回时间限制
-    long minutes = ChronoUnit.MINUTES.between(message.getCreateTime(), LocalDateTime.now());
-    if (minutes > RECALL_TIME_LIMIT) {
+    long seconds = ChronoUnit.SECONDS.between(message.getCreateTime(), LocalDateTime.now());
+    if (seconds > RECALL_TIME_LIMIT * 60) {
       throw new RuntimeException("超过撤回时间限制（2分钟）");
     }
 
@@ -165,12 +165,17 @@ public class MessageServiceImpl implements MessageService {
 
     // 如果是最后一条消息，更新会话内容
     updateConversationLastMessage(message.getConversationId());
+    Integer unread = messageMapper.selectConversationUnreadCount(message.getConversationId(), message.getToUserId());
+    conversationMapper.setUnreadCount(message.getConversationId(), message.getToUserId(), unread == null ? 0 : unread);
+    webSocketHandler.sendEventAfterCommit(message.getToUserId(), "message_recall", message);
+    webSocketHandler.sendEventAfterCommit(message.getFromUserId(), "message_recall", message);
 
     log.info("用户 {} 撤回消息 {}", userId, messageId);
     return true;
   }
 
   @Override
+  @Transactional
   public boolean deleteMessage(Long messageId, Long userId) {
     Message message = messageMapper.selectById(messageId);
     if (message == null) {
@@ -187,6 +192,10 @@ public class MessageServiceImpl implements MessageService {
     }
 
     messageMapper.updateById(message);
+    if (message.getToUserId().equals(userId)) {
+      Integer unread = messageMapper.selectConversationUnreadCount(message.getConversationId(), userId);
+      conversationMapper.setUnreadCount(message.getConversationId(), userId, unread == null ? 0 : unread);
+    }
     log.info("用户 {} 删除消息 {}", userId, messageId);
     return true;
   }
@@ -221,6 +230,38 @@ public class MessageServiceImpl implements MessageService {
     }
 
     return conversation;
+  }
+
+  private void requireFriendConversation(String conversationId, Long userId) {
+    Conversation conversation = conversationMapper.selectById(conversationId);
+    Long otherUserId;
+    if (conversation == null) {
+      // 新好友还没有发送消息时，会话记录尚未建立。
+      String[] ids = conversationId.split("_", -1);
+      if (ids.length != 2) {
+        throw new IllegalArgumentException("会话不存在或无权访问");
+      }
+      try {
+        long first = Long.parseLong(ids[0]);
+        long second = Long.parseLong(ids[1]);
+        if (first >= second || !conversationId.equals(generateConversationId(first, second)) ||
+            (userId != first && userId != second)) {
+          throw new IllegalArgumentException("会话不存在或无权访问");
+        }
+        otherUserId = userId == first ? second : first;
+      } catch (NumberFormatException e) {
+        throw new IllegalArgumentException("会话不存在或无权访问");
+      }
+    } else {
+      if (!userId.equals(conversation.getUser1Id()) && !userId.equals(conversation.getUser2Id())) {
+        throw new IllegalArgumentException("会话不存在或无权访问");
+      }
+      otherUserId = userId.equals(conversation.getUser1Id())
+          ? conversation.getUser2Id() : conversation.getUser1Id();
+    }
+    if (!friendshipService.isFriend(userId, otherUserId)) {
+      throw new IllegalArgumentException("仅可查看好友会话");
+    }
   }
 
   /**
@@ -278,14 +319,4 @@ public class MessageServiceImpl implements MessageService {
     return content.substring(0, 50) + "...";
   }
 
-  /**
-   * 创建WebSocket消息
-   */
-  private String createWebSocketMessage(String type, Object data) {
-    com.alibaba.fastjson2.JSONObject json = new com.alibaba.fastjson2.JSONObject();
-    json.put("type", type);
-    json.put("data", data);
-    json.put("timestamp", System.currentTimeMillis());
-    return json.toJSONString();
-  }
 }

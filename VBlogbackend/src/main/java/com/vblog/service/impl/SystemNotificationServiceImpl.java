@@ -6,6 +6,7 @@ import com.vblog.entity.User;
 import com.vblog.mapper.SystemNotificationMapper;
 import com.vblog.service.SystemNotificationService;
 import com.vblog.service.UserService;
+import com.vblog.websocket.MessageWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,7 +21,7 @@ import java.util.Map;
 
 /**
  * 系统互动通知服务实现类
- * 
+ *
  * @author V-Blog团队
  */
 @Slf4j
@@ -30,6 +31,7 @@ public class SystemNotificationServiceImpl implements SystemNotificationService 
 
   private final SystemNotificationMapper notificationMapper;
   private final UserService userService;
+  private final MessageWebSocketHandler webSocketHandler;
 
   @Override
   @Transactional
@@ -49,7 +51,9 @@ public class SystemNotificationServiceImpl implements SystemNotificationService 
     }
 
     notification.setIsRead(0);
+    notification.setCreateTime(java.time.LocalDateTime.now());
     notificationMapper.insert(notification);
+    webSocketHandler.sendEventAfterCommit(notification.getRecipientId(), "system_notification", notification);
     log.info("Created notification: type={}, recipient={}, sender={}",
         notification.getType(), notification.getRecipientId(), notification.getSenderId());
     return notification;
@@ -229,14 +233,15 @@ public class SystemNotificationServiceImpl implements SystemNotificationService 
   public boolean markAsRead(Long notificationId, Long userId) {
     SystemNotification notification = notificationMapper.selectById(notificationId);
     if (notification == null) {
-      throw new RuntimeException("通知不存在");
+      throw new IllegalArgumentException("通知不存在");
     }
 
     // 验证权限
     if (!notification.getRecipientId().equals(userId)) {
-      throw new RuntimeException("无权操作此通知");
+      throw new IllegalArgumentException("无权操作此通知");
     }
 
+    if (Integer.valueOf(1).equals(notification.getIsRead())) return true;
     notification.setIsRead(1);
     return notificationMapper.update(notification) > 0;
   }
@@ -262,13 +267,15 @@ public class SystemNotificationServiceImpl implements SystemNotificationService 
   @Override
   @Transactional
   public boolean markAllAsRead(Long recipientId) {
-    return notificationMapper.markAsReadByRecipient(recipientId, null) > 0;
+    notificationMapper.markAsReadByRecipient(recipientId, null);
+    return true;
   }
 
   @Override
   @Transactional
   public boolean markAllAsReadByType(Long recipientId, String type) {
-    return notificationMapper.markAsReadByRecipient(recipientId, type) > 0;
+    notificationMapper.markAsReadByRecipient(recipientId, type);
+    return true;
   }
 
   @Override

@@ -7,6 +7,13 @@
         <id column="user_id" property="userId" />
         <result column="username" property="username" />
         <result column="password" property="password" />
+        <result column="nickname" property="nickname" />
+        <result column="gender" property="gender" />
+        <result column="phone" property="phone" />
+        <result column="email" property="email" />
+        <result column="location" property="location" />
+        <result column="website" property="website" />
+        <result column="background" property="background" />
         <result column="avatar" property="avatar" />
         <result column="bio" property="bio" />
         <result column="create_time" property="createTime" />
@@ -15,7 +22,7 @@
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        user_id, username, password, avatar, bio, create_time, update_time
+        user_id, username, password, nickname, gender, phone, email, location, website, background, avatar, bio, create_time, update_time
     </sql>
 
     <!-- 查询单条 -->
@@ -65,6 +72,13 @@
             <if test="password != null">password = #{password},</if>
             <if test="avatar != null">avatar = #{avatar},</if>
             <if test="bio != null">bio = #{bio},</if>
+            <if test="nickname != null">nickname = #{nickname},</if>
+            <if test="gender != null">gender = #{gender},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="location != null">location = #{location},</if>
+            <if test="website != null">website = #{website},</if>
+            <if test="background != null">background = #{background},</if>
             update_time = now()
         </set>
         where user_id = #{userId}
